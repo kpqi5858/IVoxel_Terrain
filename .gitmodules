@@ -1,0 +1,10 @@
+[submodule "Plugins/UnrealFastNoisePlugin"]
+	path = Plugins/UnrealFastNoisePlugin
+	url = https://github.com/midgen/UnrealFastNoise.git
+[submodule "Plugins/RuntimeMeshComponent"]
+	path = Plugins/RuntimeMeshComponent
+	url = https://github.com/Moddingear/RuntimeMeshComponent.git
+	branch = LOD
+[submodule "Plugins/opencl-ue4"]
+	path = Plugins/opencl-ue4
+	url = https://github.com/getnamo/opencl-ue4.git
