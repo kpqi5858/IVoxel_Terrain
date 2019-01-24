@@ -1,0 +1,31 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "4.21",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "IVoxel_Terrain",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		},
+		{
+			"Name": "IVoxel",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"RuntimeMeshComponent"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "UnrealFastNoisePlugin",
+			"Enabled": true
+		}
+	]
+}
