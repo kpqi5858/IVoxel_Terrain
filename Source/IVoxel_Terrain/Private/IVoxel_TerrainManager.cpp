@@ -26,81 +26,13 @@ void IVoxel_TerrainManager::RegisterInvoker(TWeakObjectPtr<AActor> Actor)
 }
 
 void IVoxel_TerrainManager::CreateStartChunks()
-{	/*
-	const int LoadArea = 1;
-	for (int x = -LoadArea; x < LoadArea; x++)
-		for (int y = -LoadArea; y < LoadArea; y++)
-			for (int z = -LoadArea; z < LoadArea; z++)
-			{
-				CreateChunk(FIntVector(x, y, z), false);
-			}*/
+{
 	CreateChunk(FIntVector(0, 0, 0), false);
-	/*
-	FOctree* MainOctree = new FOctree(FIntVector(0), World->KeepChunkRadius);
-	const int InitinalOctreeBox = 3;
-	for (int x = -InitinalOctreeBox; x < InitinalOctreeBox; x++)
-	for (int y = -InitinalOctreeBox; y < InitinalOctreeBox; y++)
-	for (int z = -InitinalOctreeBox; z < InitinalOctreeBox; z++)
-	{
-		MainOctree->GetOctree(FVector(x, y, z), 0);
-	}
-
-	TSet<FOctree*> Octrees;
-	MainOctree->GetChildOctrees(Octrees, 0);
-
-	for (auto& Node : Octrees)
-	{
-		if (Node->HasChilds) continue;
-		FActorSpawnParameters SpawnParm;
-		SpawnParm.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		auto chunk = World->GetWorld()->SpawnActor<AIVoxel_Chunk>(FVector(0), FRotator(0), SpawnParm);
-		chunk->Setup(World, Node->Position);
-		FVector AL = Node->GetMinimalPosition_World() * World->GetVoxelSize() / 2;
-		chunk->SetActorLocation(AL);
-		MainOctree->GetData(Node->Position, Node->Depth, World->WorldGeneratorInstanced, chunk->TileData);
-		chunk->SetActorScale3D(FVector(Node->Size()/2));
-
-		auto Polygonizer = GetPolygonizer(chunk);
-		IVoxel_PolygonizedData PData;
-		Polygonizer->Polygonize(PData);
-		chunk->ApplyPolygonized(PData);
-	}
-
-	MainOctree->Destroy();
-	*/
 }
 
 void IVoxel_TerrainManager::Tick()
 {
 	InternalTickCount++;
-	/*
-	if (InternalTickCount % 5 == 0)
-	{
-		TSet<TWeakObjectPtr<AActor>> InvalidInvokers;
-
-		for (auto& Invoker : InvokersList)
-		{
-			if (!Invoker.IsValid())
-			{
-				InvalidInvokers.Add(Invoker);
-				continue;
-			}
-			FIntVector InvokerPos = WorldLocationToChunkIndex(Invoker->GetActorLocation());
-			const int LoadArea = World->KeepChunkRadius * 2;
-			for (int x = -LoadArea; x < LoadArea; x+=2)
-			for (int y = -LoadArea; y < LoadArea; y+=2)
-			for (int z = -LoadArea; z < LoadArea; z+=2)
-			{
-				CreateChunk(FIntVector(x, y, z) + InvokerPos, true);
-			}
-
-		}
-
-		for (auto& IIV : InvalidInvokers)
-		{
-			InvokersList.Remove(IIV);
-		}
-	}*/
 	if (World->TickFlag)
 	{
 		World->TickFlag = false;
@@ -122,72 +54,7 @@ void IVoxel_TerrainManager::Tick()
 		}
 	}
 }
-/*
-void IVoxel_TerrainManager::RenderOctreeTick(TSet<FVector>& LoadLoc)
-{
-	TSet<FOctree*> OldOctreeNodes;
-	MainRenderOctree->GetChildOctrees(OldOctreeNodes, 0);
 
-	TSet<FIntVector> OldOctreeLocs;
-	for (auto& Node : OldOctreeNodes)
-	{
-		if (!Node->HasChilds)
-			OldOctreeLocs.Add(Node->Position);
-	}
-
-	TSharedPtr<FOctree> NewOctree = MakeShareable(new FOctree(FIntVector(0), OctreeDepthInit));
-
-	TSet<FOctree*> NewOctreeNodes;
-	TSet<FIntVector> NewOctreeLocs;
-
-	const int LoadArea = World->KeepChunkRadius;
-
-	for (auto& InvokerLoc : LoadLoc)
-	{
-		FIntVector InvokerPos = WorldLocationToOctreePos(InvokerLoc);
-		for (int x = -LoadArea; x < LoadArea; x++)
-		for (int y = -LoadArea; y < LoadArea; y++)
-		for (int z = -LoadArea; z < LoadArea; z++)
-		{
-			NewOctree->GetOctree(FVector(InvokerPos + FIntVector(x, y, z)));
-		}
-	}
-	NewOctree->GetChildOctrees(NewOctreeNodes, 0);
-	for (auto& Node : NewOctreeNodes)
-	{
-		if (!Node->HasChilds)
-			NewOctreeLocs.Add(Node->Position);
-	}
-
-	TSet<FIntVector> NodesToCreate = NewOctreeLocs.Difference(OldOctreeLocs);
-	TSet<FIntVector> NodesToDelete = OldOctreeLocs.Difference(NewOctreeLocs);
-
-	
-	for (auto& Dloc : NodesToDelete)
-	{
-		auto ChunkPtr = ChunksNodeLoaded.Find(Dloc);
-		if (!ChunkPtr)
-		{
-			UE_LOG(LogIVoxel, Error, TEXT("No loaded chunk"));
-			continue;
-		}
-		auto Chunk = *ChunkPtr;
-		ChunksNodeLoaded.Remove(Dloc);
-		UnloadChunk(Chunk);
-	}
-	for (auto& Cloc : NodesToCreate)
-	{
-		auto Chunk = GetChunkUnloaded();
-		FOctree* Node = NewOctree->GetOctreeExact(Cloc);
-
-		CreateChunkOctree(Chunk, Node, false);
-	}
-
-	UE_LOG(LogIVoxel, Warning, TEXT("Created %d Deleted %d"), NodesToCreate.Num(), NodesToDelete.Num());
-	NewOctree->DebugRender(World->GetWorld());
-	MainRenderOctree = NewOctree;
-}
-*/
 void IVoxel_TerrainManager::Destroy()
 {
 	MesherThreadPool->Destroy();

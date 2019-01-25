@@ -59,7 +59,9 @@ void IVoxelManager::PolygonizeOctree(FVector OctreeLocation, uint8 RenderSize, u
 	{
 		if (Octree->GetValue() && (Octree->Depth == RenderDepth ? true : !Octree->IsFake))
 		{
-			URuntimeMeshShapeGenerator::CreateBoxMesh(Octree->Size(), FVector(Octree->Position), Octree->GetColor(), Data.Vertices, Data.Triangles, Data.Normals, Data.UVs, Data.Tangent, Data.VertexColor);
+			//TODO : Fix this
+
+			//URuntimeMeshShapeGenerator::CreateBoxMesh(Octree->Size(), FVector(Octree->Position), Octree->GetColor(), Data.Vertices, Data.Triangles, Data.Normals, Data.UVs, Data.Tangent, Data.VertexColor);
 			FRuntimeMeshCollisionBox box;
 			box.Center = FVector(Octree->Position);
 			box.Extents = FVector(Octree->Size()*2);

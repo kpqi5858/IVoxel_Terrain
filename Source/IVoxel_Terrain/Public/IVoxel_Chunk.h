@@ -56,12 +56,6 @@ public:
 	bool PendingToDelete = false;
 
 	FThreadSafeCounter DoingThreadedJob;
-
-	bool AsyncPolygonizedFlag = false;
-	IVoxel_PolygonizedData AsyncPolygonized;
-
-	FIVoxel_BlockData TileData[IVOX_CHUMKDATAARRAYSIZE];
-
 private:
 	uint64 InternalTicks = 0;
 
@@ -77,16 +71,11 @@ public:
 	//Cached
 	IVoxel_TerrainManager* Manager;
 
-	void GenerateChunkData(UIVoxel_WorldGenerator* WorldGenerator);
-
 	//Builds octree, and render
 	void RenderOctreeTick();
 
 	inline void ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_PolygonizedData& Data);
-
-	FIVoxel_BlockData GetBlockData(FIntVector LocalPos);
-	FIVoxel_BlockData GetBlockData(int x, int y, int z);
-
+	
 	inline FVector GetWorldLocation();
 
 	FVector WorldPosToLocalPos(FVector Pos);

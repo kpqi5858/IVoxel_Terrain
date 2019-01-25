@@ -156,80 +156,6 @@ void AIVoxel_Chunk::RenderOctreeTick()
 		chunk->DecreaseOC();
 	}
 	RenderOctree = NewOctree;
-	/*
-	TSet<FOctree*> OldOctreeNodes;
-	TSet<FIntVector> OldOctreeLocs;
-
-	RenderOctree->GetChildOctrees_NoChild(OldOctreeNodes);
-
-	for (auto& Node : OldOctreeNodes)
-	{
-		OldOctreeLocs.Add(Node->Position);
-	}
-
-	TSharedPtr<FOctree> NewOctree = MakeShareable(new FOctree(FIntVector(0), Manager->OctreeDepthInit));
-
-	TSet<FOctree*> NewOctreeNodes;
-	TSet<FIntVector> NewOctreeLocs;
-
-	NewOctree->LodSubdivide(this);
-	NewOctree->GetChildOctrees_NoChild(NewOctreeNodes);
-
-	for (auto& Node : NewOctreeNodes)
-	{
-		NewOctreeLocs.Add(Node->Position);
-	}
-
-	for (auto& Old : OldOctreeLocs)
-	{
-		if (LoadedLeaves.Contains(Old)) 
-		{
-			if (NewOctreeLocs.Contains(Old)) continue;
-		}
-		auto Node = RenderOctree->GetOctreeExact(Old);
-		UnloadRMC(Node);
-	}
-	for (auto& New : NewOctreeLocs)
-	{
-		if (LoadedLeaves.Contains(New)) continue;
-
-		auto Comp = GetFreeRMC();
-		auto Node = NewOctree->GetOctreeExact(New);
-
-		Comp->SetRelativeLocation(Node->GetMinimalPosition_World() * Manager->VoxelSizeInit / 2);
-		Comp->SetWorldScale3D(FVector(Node->Size() / 2));
-
-		auto Polygonizer = Manager->GetPolygonizer(this, Node);
-		IVoxel_PolygonizedData PData;
-		Polygonizer->Polygonize(PData);
-
-		ApplyPolygonized(Comp, PData);
-
-		LoadedLeaves.Add(New, Comp);
-	}
-	/*
-	UE_LOG(LogIVoxel, Error, TEXT("Created %d Deleted %d"), NodesToCreate.Num(), NodesToDelete.Num());
-	for (auto& DLoc : NodesToDelete)
-	{
-		auto Node = RenderOctree->GetOctreeExact(DLoc);
-		UnloadRMC(Node);
-	}
-	for (auto& CLoc : NodesToCreate)
-	{
-		auto Comp = GetFreeRMC();
-		auto Node = NewOctree->GetOctreeExact(CLoc);
-
-		Comp->SetRelativeLocation(Node->GetMinimalPosition_World() * Manager->VoxelSizeInit / 2);
-		Comp->SetWorldScale3D(FVector(Node->Size() / 2));
-
-		auto Polygonizer = Manager->GetPolygonizer(this, Node);
-		IVoxel_PolygonizedData PData;
-		Polygonizer->Polygonize(PData);
-
-		ApplyPolygonized(Comp, PData);
-
-		LoadedLeaves.Add(CLoc, Comp);
-	}*/
 }
 
 inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_PolygonizedData& Data)
@@ -252,40 +178,9 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 		}
 		else
 		{
-			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, TArray<FVector2D>(), Section.Color, TArray<FRuntimeMeshTangent>(), ShouldCreateCollision);
+			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, Section.Tangent, ShouldCreateCollision);
 		}
 	}
-}
-
-void AIVoxel_Chunk::GenerateChunkData(UIVoxel_WorldGenerator* WorldGenerator)
-{
-	check(IVoxWorld);
-
-	for (int x = 0; x < IVOX_CHUNKDATASIZE; x++)
-		for (int y = 0; y < IVOX_CHUNKDATASIZE; y++)
-			for (int z = 0; z < IVOX_CHUNKDATASIZE; z++)
-			{
-				FVector loc = FVector(IVOX_CHUNKDATASIZE) * FVector(ChunkLocation) + 
-					(FVector(x,y,z)) - FVector(ChunkLocation);
-				TileData[IndexFor(x,y,z)] = WorldGenerator->GetBlockData(loc.X, loc.Y, loc.Z);
-			}
-	/*
-	for (int i = 0; i < IVOX_CHUMKDATAARRAYSIZE; i++)
-	{
-		FVector loc = GetWorldLocation() +
-			(FVector(AsLocation(i)) * IVoxWorld->GetVoxelSize());
-		TileData[i] = WorldGenerator->GetBlockData(loc.X, loc.Y, loc.Z);
-	}*/
-}
-
-FIVoxel_BlockData AIVoxel_Chunk::GetBlockData(FIntVector LocalPos)
-{
-	return TileData[IndexFor(LocalPos)];
-}
-
-FIVoxel_BlockData AIVoxel_Chunk::GetBlockData(int x, int y, int z)
-{
-	return TileData[IndexFor(x, y, z)];
 }
 
 inline FVector AIVoxel_Chunk::GetWorldLocation()
@@ -408,7 +303,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Log2(Dist);
+	return FMath::FloorToInt(FMath::Log2(Dist));
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

@@ -19,7 +19,6 @@ void IVoxel_PolygonizerThread::DoThreadedWork()
 	check(CompPtr); //Should not happen, Don't update lod during threaded job
 				    //TODO : Update lod during threaded job, abandon useless tasks
 	auto Comp = *CompPtr;
-	check(Chunk->TickList.Contains(Comp));
 
 	Comp->PolygonizedData = IVoxel_PolygonizedData();
 	if (!Polygonizer->Polygonize(Comp->PolygonizedData))
