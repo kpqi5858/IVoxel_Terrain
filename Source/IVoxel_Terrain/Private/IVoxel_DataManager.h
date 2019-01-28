@@ -3,6 +3,7 @@
 #include "IVoxel_TerrainManager.h"
 
 class FOctree;
+class AIVoxel_Chunk;
 
 class FIVoxel_DataManager
 {

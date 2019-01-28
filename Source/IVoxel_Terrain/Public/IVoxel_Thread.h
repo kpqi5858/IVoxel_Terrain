@@ -1,7 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IVoxel_MCPolygonizer.h"
+#include "IVoxel_Polygonizer.h"
+#include "IVoxel_Chunk.h"
 
 struct IVoxel_PolygonizedData;
 class AIVoxel_Chunk;

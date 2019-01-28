@@ -58,8 +58,8 @@ inline bool FOctree::IsInOctree(FVector Location)
 
 inline bool FOctree::IsInOctree(FIntVector Location)
 {
-	FIntVector P1 = Position + FIntVector(Size() / 2);
-	FIntVector P2 = Position - FIntVector(Size() / 2);
+	FIntVector P1 = GetMaximumPosition();
+	FIntVector P2 = GetMinimalPosition();
 	return Location.X <= P1.X && Location.X >= P2.X  //X
 		&& Location.Y <= P1.Y && Location.Y >= P2.Y  //Y
 		&& Location.Z <= P1.Z && Location.Z >= P2.Z; //Z
@@ -232,7 +232,6 @@ void FOctree::MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBl
 	if (HasChilds)
 	{
 		check(Depth > 0);
-		check(IVOX_CHUNKDATASIZE % 2 == 0);
 
 		if (!Data)
 		{

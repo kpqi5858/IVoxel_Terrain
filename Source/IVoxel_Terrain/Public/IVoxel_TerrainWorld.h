@@ -8,7 +8,7 @@
 #include "RuntimeMesh.h"
 #include "Transvoxel.cpp"
 #include "FastNoise/FastNoise.h"
-#include "IVoxel_MCPolygonizer.h"
+#include "IVoxel_Polygonizer.h"
 #include "IVoxel_WorldGenBase.h"
 #include "IVoxel_TerrainManager.h"
 #include "IVoxel_TerrainWorld.generated.h"

@@ -7,10 +7,14 @@
 #include "IVoxel_WorldGenBase.h"
 #include "IVoxel_Thread.h"
 #include "IVoxel_Octree.h"
+#include "IVoxel_CubePolygonizer.h"
+#include "IVoxel_MCPolygonizer.h"
 
 class AIVoxel_TerrainWorld;
 class AIVoxel_Chunk;
 class IVoxel_Polygonizer;
+class IVoxel_CubePolygonizer;
+class IVoxel_MCPolygonizer;
 class FOctree;
 
 class IVOXEL_TERRAIN_API IVoxel_TerrainManager

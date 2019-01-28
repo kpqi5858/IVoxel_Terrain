@@ -94,7 +94,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 				CurrentSection.Vertex.Add(Intersect * VoxelSize);
 				CurrentSection.UV.Add(UVs);
 				VertexIndices[i] = VertexIndex;
-				CurrentSection.Color.Add(ThisData[e1].Color);
+				CurrentSection.Color.Add(Color);
 
 				if (CacheFlag & 0x08)
 					CacheVertex(Pos, ThisData[0].BlockType, EdgeIndex, VertexIndex);

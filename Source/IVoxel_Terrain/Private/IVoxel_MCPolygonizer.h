@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "IVoxel_Chunk.h"
 #include "IVoxel_Terrain.h"
+#include "IVoxel_Polygonizer.h"
+#include "IVoxel_Chunk.h"
 #include "RuntimeMeshLibrary.h"
 
 class AIVoxel_Chunk;
@@ -27,16 +29,6 @@ struct VertexCacheSectionData
 	VertexCacheData Data[IVOX_CHUMKDATAARRAYSIZE];
 };
 
-class IVOXEL_TERRAIN_API IVoxel_Polygonizer
-{
-public:
-	virtual bool Polygonize(IVoxel_PolygonizedData& OutData)
-	{
-		unimplemented();
-		return false;
-	};
-};
-
 class IVOXEL_TERRAIN_API IVoxel_MCPolygonizer : public IVoxel_Polygonizer
 {
 private:
@@ -45,6 +37,7 @@ private:
 
 	FIVoxel_BlockData* CachedData;
 	FIVoxel_BlockData* ExtendedCachedData; //For gradient normals, etc
+
 public:
 	virtual ~IVoxel_MCPolygonizer() {}
 	IVoxel_MCPolygonizer(AIVoxel_Chunk* Chunk, FIntVector NodePos, uint8 NodeDepth);

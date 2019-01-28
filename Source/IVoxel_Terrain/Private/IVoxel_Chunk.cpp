@@ -163,6 +163,7 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 	if (Data.PolygonizedSections.Num() == 0)
 	{
 		UE_LOG(LogIVoxel, Error, TEXT("PolygonizedData sections num is 0"));
+		ensure(false);
 		return;
 	}
 	check(Data.PolygonizedSections.Num() == IVoxWorld->VoxelMaterials.Num());
@@ -303,7 +304,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::FloorToInt(FMath::Log2(Dist));
+	return FMath::Clamp(FMath::FloorToInt(FMath::Log2(Dist) - 0.5), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

@@ -8,7 +8,7 @@
 #include "IVoxel_TerrainWorld.h"
 #include "IVoxel_WorldGenBase.h"
 #include "IVoxel_BlockData.h"
-#include "IVoxel_MCPolygonizer.h"
+#include "IVoxel_Polygonizer.h"
 #include "IVoxel_NodeChunk.h"
 #include "IVoxel_DataManager.h"
 #include "IVoxel_Chunk.generated.h"
