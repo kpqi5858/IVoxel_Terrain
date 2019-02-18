@@ -53,11 +53,18 @@ public:
 
 	TSet<UIVoxelNodeChunk*> TickList;
 	
+	TSet<UIVoxelNodeChunk*> QueuedUnload;
+
 	bool PendingToDelete = false;
 
 	FThreadSafeCounter DoingThreadedJob;
 private:
 	uint64 InternalTicks = 0;
+
+	//Creates chunk node instance first
+	void InitLeaves();
+
+	inline UIVoxelNodeChunk* NewNodeChunk();
 
 public:
 	void Setup(AIVoxel_TerrainWorld* World, FIntVector ChunkLoc);
@@ -87,7 +94,7 @@ public:
 
 	UIVoxelNodeChunk* GetFreeNodeChunk(FIntVector NodePos, uint8 NodeDepth);
 
-	void UnloadRMC(FIntVector Pos); //Queue to unload chunk
+	void QueueUnload(UIVoxelNodeChunk* Chunk); //Queue to unload chunk
 	void UnloadRMC(UIVoxelNodeChunk* Chunk); //Real unload
 
 	uint8 GetLodFor(FOctree* Node);

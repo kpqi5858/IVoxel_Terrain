@@ -16,7 +16,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 	FVector RealNodePos = FOctree::GetPosition_World(NodePos, Depth)/2;
 
-	CachedData = new FIVoxel_BlockData[IVOX_CHUMKDATAARRAYSIZE];
+	CachedData = reinterpret_cast<FIVoxel_BlockData*>(FMemory::SystemMalloc(sizeof(FIVoxel_BlockData) * IVOX_CHUMKDATAARRAYSIZE));
 
 	ChunkData->DataOctree->Begin();
 
@@ -129,7 +129,8 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 		URuntimeMeshLibrary::CalculateTangentsForMesh(Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Tangent, true);
 	}
 
-	delete[] CachedData;
+	FMemory::SystemFree(CachedData);
+
 	return true;
 }
 

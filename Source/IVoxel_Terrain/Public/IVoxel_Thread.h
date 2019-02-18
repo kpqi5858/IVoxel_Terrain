@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "IVoxel_Polygonizer.h"
 #include "IVoxel_Chunk.h"
+#include "HAL/ThreadingBase.h"
 
 struct IVoxel_PolygonizedData;
 class AIVoxel_Chunk;

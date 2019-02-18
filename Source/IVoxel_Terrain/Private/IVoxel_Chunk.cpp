@@ -21,6 +21,28 @@ void AIVoxel_Chunk::Setup(AIVoxel_TerrainWorld* World, FIntVector ChunkLoc)
 	DataOctree = MakeShareable(new FIVoxel_DataManager(this));
 
 	SetActorLocation(GetWorldLocation()/2);
+
+	InitLeaves();
+}
+
+void AIVoxel_Chunk::InitLeaves()
+{
+	FOctree* Initial = new FOctree(FIntVector(0), Manager->OctreeDepthInit, nullptr);
+
+	Initial->LodSubdivide(this);
+
+	TSet<FOctree*> Nodes;
+	Initial->GetChildOctrees_NoChild(Nodes);
+
+	int ToInit = Nodes.Num();
+	ToInit += ToInit / 2; //ToInit *= 1.5
+
+	for (int i = 0; i < ToInit; i++)
+	{
+		auto Comp = NewNodeChunk();
+		FreeLeaves.Add(Comp);
+	}
+	delete Initial;
 }
 
 void AIVoxel_Chunk::Tick(float DeltaTime)
@@ -45,7 +67,25 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
+
 	ToUpdate.Reset();
+
+	TSet<UIVoxelNodeChunk*> ToDelete;
+
+	for (auto& Chunk : QueuedUnload)
+	{
+		Chunk->DeletionLeft -= DeltaTime;
+		if (Chunk->DeletionLeft <= 0)
+		{
+			UnloadRMC(Chunk);
+			ToDelete.Add(Chunk);
+		}
+	}
+	for (auto& Chunk : ToDelete)
+	{
+		QueuedUnload.Remove(Chunk);
+	}
+
 	//if (DoingThreadedJob.GetValue()) return; //Don't update if thread is running
 
 	int Rate = IVoxWorld->UpdateTicks;
@@ -125,6 +165,8 @@ void AIVoxel_Chunk::RenderOctreeTick()
 		if (Node->Depth > CullingDepth) continue; //Don't mesh node's depth bigger than culling
 
 		auto Comp = GetFreeNodeChunk(CLoc, Node->Depth);
+		Comp->Load(CLoc, Node->Depth);
+
 		LoadedLeaves.Add(CLoc, Comp);
 
 		TSet<FOctree*> OldNodes;
@@ -222,38 +264,42 @@ UIVoxelNodeChunk* AIVoxel_Chunk::GetFreeNodeChunk(FIntVector NodePos, uint8 Node
 	if (FreeLeaves.Num())
 	{
 		auto Comp = FreeLeaves.Pop();
-		//Comp->SetVisibility(true);
-		Comp->Load(NodePos, NodeDepth);
 		RegisterTickList(Comp);
 		return Comp;
 	}
 	else
 	{
-		auto Comp = NewObject<UIVoxelNodeChunk>(this);
-		Comp->Setup(this);
-		Comp->SetupAttachment(RootComponent);
-		Comp->RegisterComponent();
-		for (int i = 0; i < IVoxWorld->VoxelMaterials.Num(); i++)
-		{
-			Comp->SetMaterial(i, IVoxWorld->VoxelMaterials[i]);
-			Comp->CreateMeshSection(i, TArray<FVector>(), TArray<int32>(), TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FRuntimeMeshTangent>(), true);
-		}
-		Comp->Load(NodePos, NodeDepth);
+		auto Comp = NewNodeChunk();
 		RegisterTickList(Comp);
 		return Comp;
 	}
 	return nullptr;
 }
 
-void AIVoxel_Chunk::UnloadRMC(FIntVector Pos)
+inline UIVoxelNodeChunk* AIVoxel_Chunk::NewNodeChunk()
 {
+	auto Comp = NewObject<UIVoxelNodeChunk>(this);
+	Comp->Setup(this);
+	Comp->SetupAttachment(RootComponent);
+	Comp->RegisterComponent();
+	for (int i = 0; i < IVoxWorld->VoxelMaterials.Num(); i++)
+	{
+		Comp->SetMaterial(i, IVoxWorld->VoxelMaterials[i]);
+		Comp->CreateMeshSection(i, TArray<FVector>(), TArray<int32>(), TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FRuntimeMeshTangent>(), true);
+	}
+	return Comp;
+}
 
+void AIVoxel_Chunk::QueueUnload(UIVoxelNodeChunk* Chunk)
+{
+	Chunk->DeletionLeft = IVoxWorld->DeletionDelay;
+	QueuedUnload.Add(Chunk);
 }
 
 void AIVoxel_Chunk::UnloadRMC(UIVoxelNodeChunk* Chunk)
 {
 	check(!FreeLeaves.Contains(Chunk));
-
+	Chunk->ClearAllMeshSections();
 	FreeLeaves.Add(Chunk);
 }
 
@@ -306,7 +352,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(FMath::Log2(Dist) - 0.5), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(FMath::Log2(Dist)), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

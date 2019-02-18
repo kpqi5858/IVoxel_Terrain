@@ -1,4 +1,5 @@
 #pragma once
+
 #include "IVoxel_TerrainWorld.h"
 #include "IVoxel_Polygonizer.h"
 #include "IVoxel_NodeChunk.generated.h"
@@ -8,7 +9,7 @@ class IVoxel_PolygonizerThread;
 struct IVoxel_PolygonizedData;
 
 UCLASS()
-class UIVoxelNodeChunk : public URuntimeMeshComponent
+class IVOXEL_TERRAIN_API UIVoxelNodeChunk : public URuntimeMeshComponent
 {
 	GENERATED_BODY()
 public:
@@ -23,6 +24,8 @@ public:
 	bool HasMesh = false;
 
 	bool IgnoreMesh = false;
+
+	float DeletionLeft = 0;
 
 	FIntVector NodePos;
 	uint8 NodeDepth;

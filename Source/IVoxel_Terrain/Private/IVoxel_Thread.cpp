@@ -16,8 +16,11 @@ void IVoxel_PolygonizerThread::DoThreadedWork()
 	check(Polygonizer.IsValid());
 
 	auto CompPtr = Chunk->LoadedLeaves.Find(ChunkPos);
-	check(CompPtr); //Should not happen, Don't update lod during threaded job
-				    //TODO : Update lod during threaded job, abandon useless tasks
+	if (!CompPtr) //Unloaded during jobs
+	{
+		delete this;
+		return;
+	}
 	auto Comp = *CompPtr;
 
 	Comp->PolygonizedData = IVoxel_PolygonizedData();

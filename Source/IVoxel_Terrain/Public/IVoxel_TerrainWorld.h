@@ -57,6 +57,9 @@ public:
 	UPROPERTY(EditAnywhere)
 	int CollisionMaxDepth = 3;
 	
+	UPROPERTY(EditAnywhere)
+	float DeletionDelay = 1;
+
 	UPROPERTY()
 	UIVoxel_WorldGenerator* WorldGeneratorInstanced;
 

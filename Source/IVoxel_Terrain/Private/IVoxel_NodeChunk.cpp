@@ -62,7 +62,6 @@ void UIVoxelNodeChunk::DecreaseOC()
 	
 	if (OldChunkCount == 0)
 	{
-		ClearAllMeshSections();
-		Chunk->UnloadRMC(this);
+		Chunk->QueueUnload(this);
 	}
 }

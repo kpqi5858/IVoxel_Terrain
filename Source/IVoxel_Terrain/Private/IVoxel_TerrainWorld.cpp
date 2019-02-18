@@ -11,9 +11,6 @@ AIVoxel_TerrainWorld::AIVoxel_TerrainWorld()
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	RootComponent = RootComp;
 
-	RMC = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("RMC"));
-	RMC->SetupAttachment(RootComp);
-	
 	PrimaryActorTick.bCanEverTick = true;
 }
 

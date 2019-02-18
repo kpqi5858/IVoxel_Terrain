@@ -58,6 +58,8 @@ void IVoxel_TerrainManager::Tick()
 void IVoxel_TerrainManager::Destroy()
 {
 	MesherThreadPool->Destroy();
+	delete MesherThreadPool;
+
 	TArray<AIVoxel_Chunk*> ChunksToDelete;
 	ChunksLoaded.GenerateValueArray(ChunksToDelete);
 
