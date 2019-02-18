@@ -169,8 +169,3 @@ bool IVoxel_TerrainManager::IsTooFarFromInvokers(FIntVector ChunkPos)
 	}
 	return true;
 }
-
-void IVoxel_TerrainManager::DebugRender(UWorld* World)
-{
-	//MainRenderOctree->DebugRender(World);
-}

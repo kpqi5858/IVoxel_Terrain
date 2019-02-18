@@ -99,8 +99,3 @@ void AIVoxel_TerrainWorld::DoLodTick()
 {
 	TickFlag = true;
 }
-
-void AIVoxel_TerrainWorld::DebugRender()
-{
-	Manager->DebugRender(GetWorld());
-}

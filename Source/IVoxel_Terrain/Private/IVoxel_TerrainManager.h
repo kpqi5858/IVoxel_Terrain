@@ -51,8 +51,6 @@ public:
 	void RegisterInvoker(TWeakObjectPtr<AActor> Actor);
 	void Tick();
 
-	void DebugRender(UWorld* World);
-
 	void Destroy();
 
 	float GetMinDistanceToInvokers(FVector Pos);

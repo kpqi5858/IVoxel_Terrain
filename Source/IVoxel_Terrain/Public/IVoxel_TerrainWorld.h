@@ -23,14 +23,12 @@ class IVOXEL_TERRAIN_API AIVoxel_TerrainWorld : public AActor
 public:	
 	UPROPERTY(EditAnywhere)
 	USceneComponent* RootComp;
-
-	UPROPERTY()
-	URuntimeMeshComponent* RMC;
+	
 	// Sets default values for this actor's properties
 	AIVoxel_TerrainWorld();
 
 	UPROPERTY(EditAnywhere)
-	float VoxelSize;
+	float VoxelSize = 80;
 
 	UPROPERTY(EditAnywhere)
 	TArray<UMaterial*> VoxelMaterials;
@@ -42,23 +40,23 @@ public:
 	int KeepChunkRadius;
 
 	UPROPERTY(EditAnywhere)
-	int OctreeSize;
+	int OctreeSize = 8;
 
 	UPROPERTY(EditAnywhere)
-	int UpdatePerTicks;
+	int UpdateTicks = 30;
 
 	UPROPERTY(EditAnywhere)
 	UCurveFloat* LodCurve;
 
 	UPROPERTY(EditAnywhere)
-	int ThreadCount;
+	int ThreadCount = 2;
 
 	UPROPERTY(EditAnywhere)
-	int CullingDepth;
+	int CullingDepth = 32;
 
 	UPROPERTY(EditAnywhere)
-	int CollisionMaxDepth;
-
+	int CollisionMaxDepth = 3;
+	
 	UPROPERTY()
 	UIVoxel_WorldGenerator* WorldGeneratorInstanced;
 
@@ -82,7 +80,4 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void DoLodTick();
-
-	UFUNCTION(BlueprintCallable)
-	void DebugRender();
 };

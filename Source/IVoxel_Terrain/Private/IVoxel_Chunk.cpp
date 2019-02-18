@@ -46,10 +46,12 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
 	ToUpdate.Reset();
-	if (DoingThreadedJob.GetValue()) return; //Don't update if thread is running
+	//if (DoingThreadedJob.GetValue()) return; //Don't update if thread is running
 
+	int Rate = IVoxWorld->UpdateTicks;
+	if (Rate == 0) Rate = 1;
 
-	if (InternalTicks % 60 == 0) RenderOctreeTick();
+	if (InternalTicks % Rate == 0) RenderOctreeTick();
 }
 
 void AIVoxel_Chunk::RenderOctreeTick()
@@ -144,7 +146,7 @@ void AIVoxel_Chunk::RenderOctreeTick()
 
 		auto Polygonizer = Manager->GetPolygonizer(this, Node);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, CLoc, Polygonizer); //Will automatically deleted
-
+		Comp->PolygonizerThread = PolygonizerThread;
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
 

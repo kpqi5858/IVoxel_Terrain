@@ -12,11 +12,16 @@ class UIVoxelNodeChunk : public URuntimeMeshComponent
 	GENERATED_BODY()
 public:
 	AIVoxel_Chunk* Chunk;
+
+	IVoxel_PolygonizerThread* PolygonizerThread;
+
 	IVoxel_PolygonizedData PolygonizedData;
-	bool IsPolygonizeDone = false;
+
+	FThreadSafeBool IsPolygonizeDone = false; //Needs to be thread-safe
+
 	bool HasMesh = false;
 
-	bool QueuedDelete = false;
+	bool IgnoreMesh = false;
 
 	FIntVector NodePos;
 	uint8 NodeDepth;
