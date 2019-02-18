@@ -4,6 +4,7 @@
 #include "IVoxel_NodeChunk.generated.h"
 
 class AIVoxel_Chunk;
+class IVoxel_PolygonizerThread;
 struct IVoxel_PolygonizedData;
 
 UCLASS()
