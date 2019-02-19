@@ -43,7 +43,7 @@ public:
 	int OctreeSize = 8;
 
 	UPROPERTY(EditAnywhere)
-	int UpdateTicks = 30;
+	int UpdatePerTicks = 30;
 
 	UPROPERTY(EditAnywhere)
 	UCurveFloat* LodCurve;
@@ -59,6 +59,9 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	float DeletionDelay = 1;
+
+	UPROPERTY(EditAnywhere)
+	float WorldGenScale;
 
 	UPROPERTY()
 	UIVoxel_WorldGenerator* WorldGeneratorInstanced;

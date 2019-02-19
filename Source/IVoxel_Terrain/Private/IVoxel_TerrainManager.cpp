@@ -145,7 +145,7 @@ float IVoxel_TerrainManager::GetMinDistanceToInvokers(FVector Pos)
 	{
 		if (Invoker.IsValid())
 		{
-			float Dist = (Invoker.Get()->GetActorLocation() - Pos).GetAbsMax();
+			float Dist = (Invoker.Get()->GetActorLocation() - Pos).Size();
 			Ret = FMath::Min(Dist, Ret);
 		}
 	}

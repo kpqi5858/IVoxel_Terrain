@@ -3,16 +3,19 @@
 #include "CoreMinimal.h"
 #include "IVoxel_BlockData.h"
 #include "FastNoise/FastNoise.h"
+#include "UFNNoiseGenerator.h"
 #include "IVoxel_WorldGenBase.generated.h"
 
-UCLASS(Blueprintable, abstract)
+UCLASS(abstract)
 class IVOXEL_TERRAIN_API UIVoxel_WorldGenerator : public UObject
 {
 	GENERATED_BODY()
 public:
+	float WorldGenScale = 1;
+
 	FIVoxel_BlockData GetBlockData(float x, float y, float z)
 	{
-		FIVoxel_BlockData data = GetBlockDataImpl(x, y, z);
+		FIVoxel_BlockData data = GetBlockDataImpl(x*WorldGenScale, y*WorldGenScale, z*WorldGenScale);
 		data.Value = FMath::Clamp(data.Value, -1.0f, 1.0f);
 		return data;
 	}
@@ -76,5 +79,29 @@ public:
 	FIVoxel_BlockData GetBlockDataImpl(float x, float y, float z) override
 	{
 		return FIVoxel_BlockData((fn.GetSimplex(x/1.5, y/1.5) * 75) - z, FColor::White, 0);
+	}
+};
+
+UCLASS(Blueprintable)
+class IVOXEL_TERRAIN_API UIVoxel_UFNWorldGenerator : public UIVoxel_WorldGenerator
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite)
+	UUFNNoiseGenerator* NoiseGen;
+
+	UPROPERTY(BlueprintReadWrite)
+	float ZScale;
+
+	FIVoxel_BlockData GetBlockDataImpl(float x, float y, float z) override
+	{
+		if (!NoiseGen)
+		{
+			return FIVoxel_BlockData();
+		}
+		else
+		{
+			return FIVoxel_BlockData((NoiseGen->GetNoise2D(x, y) * ZScale) - z, FColor::White, 0);
+		}
 	}
 };

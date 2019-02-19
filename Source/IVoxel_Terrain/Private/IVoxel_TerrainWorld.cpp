@@ -32,6 +32,7 @@ void AIVoxel_TerrainWorld::BeginPlay()
 	{
 		WorldGeneratorInstanced = NewObject<UIVoxel_FlatWorldGenerator>(this, UIVoxel_FlatWorldGenerator::StaticClass());
 	}
+	WorldGeneratorInstanced->WorldGenScale = WorldGenScale;
 	WorldGeneratorInstanced->AddToRoot();
 	check(WorldGeneratorInstanced);
 
