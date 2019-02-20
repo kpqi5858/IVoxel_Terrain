@@ -11,6 +11,7 @@ IVoxel_PolygonizerThread::~IVoxel_PolygonizerThread()
 
 }
 
+//Possible error : Two different thread points toward same node chunk.
 void IVoxel_PolygonizerThread::DoThreadedWork()
 {
 	check(Polygonizer.IsValid());

@@ -59,16 +59,6 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 	}
 
 	GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::White, TEXT("Polygonizer threads : " + FString::FromInt(DoingThreadedJob.GetValue())));
-	
-	for (auto& Ch : ToUpdate)
-	{
-		auto Polygonizer = Manager->GetPolygonizer(this, Ch->NodePos, Ch->NodeDepth);
-		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, Ch->NodePos, Polygonizer); //Will automatically deleted
-
-		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
-	}
-
-	ToUpdate.Reset();
 
 	TSet<UIVoxelNodeChunk*> ToDelete;
 
@@ -92,6 +82,18 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 	if (Rate == 0) Rate = 1;
 
 	if (InternalTicks % Rate == 0) RenderOctreeTick();
+
+	for (auto& Ch : ToUpdate)
+	{
+		auto Polygonizer = Manager->GetPolygonizer(this, Ch->NodePos, Ch->NodeDepth);
+		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, Ch->NodePos, Polygonizer); //Will automatically deleted
+
+		checkf(!Ch->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
+		Ch->PolygonizerThread = PolygonizerThread;
+		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
+	}
+
+	ToUpdate.Reset();
 }
 
 void AIVoxel_Chunk::RenderOctreeTick()
@@ -188,6 +190,7 @@ void AIVoxel_Chunk::RenderOctreeTick()
 
 		auto Polygonizer = Manager->GetPolygonizer(this, Node);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, CLoc, Polygonizer); //Will automatically deleted
+		checkf(!Comp->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
 		Comp->PolygonizerThread = PolygonizerThread;
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
@@ -255,8 +258,10 @@ FVector AIVoxel_Chunk::LocalPosToWorldPos(FVector Pos)
 void AIVoxel_Chunk::UpdateChunkAt(FIntVector Pos)
 {
 	auto Node = RenderOctree->GetOctree_NoSub(Pos);
+	auto Chunk = *LoadedLeaves.Find(Node->Position);
+	check(Chunk->DeletionLeft == 0.f);
 
-	ToUpdate.Add(*LoadedLeaves.Find(Node->Position));
+	ToUpdate.Add(Chunk);
 }
 
 UIVoxelNodeChunk* AIVoxel_Chunk::GetFreeNodeChunk(FIntVector NodePos, uint8 NodeDepth)

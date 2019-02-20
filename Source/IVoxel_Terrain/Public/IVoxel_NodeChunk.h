@@ -15,7 +15,7 @@ class IVOXEL_TERRAIN_API UIVoxelNodeChunk : public URuntimeMeshComponent
 public:
 	AIVoxel_Chunk* Chunk;
 
-	IVoxel_PolygonizerThread* PolygonizerThread;
+	IVoxel_PolygonizerThread* PolygonizerThread = nullptr;
 
 	IVoxel_PolygonizedData PolygonizedData;
 

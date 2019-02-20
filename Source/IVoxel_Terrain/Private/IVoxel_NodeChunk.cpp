@@ -7,6 +7,7 @@ void UIVoxelNodeChunk::Load(FIntVector Pos, uint8 Depth)
 	IsPolygonizeDone = false;
 	HasMesh = false;
 	IgnoreMesh = false;
+	DeletionLeft = 0.f;
 }
 void UIVoxelNodeChunk::Unload()
 {
@@ -14,7 +15,7 @@ void UIVoxelNodeChunk::Unload()
 	{
 		//Try to retract queued polygonizer work
 		bool Result = Chunk->Manager->MesherThreadPool->RetractQueuedWork(PolygonizerThread);
-
+		PolygonizerThread = nullptr;
 		//Don't care whatever RetractQueuedWork succeed
 		//Unload() called means this chunk will deregistered in tick list.
 		DecreaseOCReset();
@@ -36,6 +37,7 @@ void UIVoxelNodeChunk::ChunkTick()
 		IsPolygonizeDone = false;
 		Chunk->ApplyPolygonized(this, PolygonizedData);
 		HasMesh = true;
+		PolygonizerThread = nullptr;
 		DecreaseOCReset();
 		Chunk->DoingThreadedJob.Decrement();
 	}
