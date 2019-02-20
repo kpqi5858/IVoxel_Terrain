@@ -11,12 +11,9 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	check(ChunkData);
 
 	float isolevel = 0;
-	float VoxelSize = ChunkData->IVoxWorld->GetVoxelSize() * ((float)IVOX_CHUNKDATASIZE / (IVOX_CHUNKDATASIZE-1))
-					* (FOctree::SizeFor(Depth) / 2);
+	float VoxelSize = ChunkData->IVoxWorld->GetVoxelSize();
 
-	FVector RealNodePos = FOctree::GetPosition_World(NodePos, Depth)/2;
-
-	CachedData = reinterpret_cast<FIVoxel_BlockData*>(FMemory::SystemMalloc(sizeof(FIVoxel_BlockData) * IVOX_CHUMKDATAARRAYSIZE));
+	FVector RealNodePos = FVector(NodePos);
 
 	ChunkData->DataOctree->Begin();
 
@@ -30,9 +27,9 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 	FIVoxel_BlockData ThisData[8];
 
-	for (int x = 0; x < IVOX_CHUNKDATASIZE - 1; x++)
-	for (int y = 0; y < IVOX_CHUNKDATASIZE - 1; y++)
-	for (int z = 0; z < IVOX_CHUNKDATASIZE - 1; z++)
+	for (int x = 0; x < IVOX_CHUNKDATASIZE; x++)
+	for (int y = 0; y < IVOX_CHUNKDATASIZE; y++)
+	for (int z = 0; z < IVOX_CHUNKDATASIZE; z++)
 	{
 		FIntVector Pos = FIntVector(x,y,z);
 
@@ -40,7 +37,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 		{
 			FIntVector corn = Transvoxel::Corner[i] + Pos;
 			//FMemory::Memcpy(&ThisData[i], &CachedData[AIVoxel_Chunk::IndexFor(corn)], sizeof(FIVoxel_BlockData)); //Is this faster?
-			ThisData[i] = CachedData[AIVoxel_Chunk::IndexFor(corn)];
+			ThisData[i] = GetBlockData(corn);
 		}
 
 		uint8 Casecode = 0, t = 1;
@@ -83,12 +80,23 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 				FVector v1 = FVector(Pos + Transvoxel::Corner[e1]);
 				FVector v2 = FVector(Pos + Transvoxel::Corner[e2]);
+				
+				float Val1 = ThisData[e1].Value;
+				float Val2 = ThisData[e2].Value;
 
-				FColor Color = ThisData[e1].Value < 0 ? ThisData[e1].Color : ThisData[e2].Color;
+				/*if (Depth)
+				{
+					FindBestVertexInLODChain(Depth, v1, v2, Val1, Val2);
+				}*/
+
+				FColor Color = Val1 < 0 ? ThisData[e1].Color : ThisData[e2].Color;
 
 				VertexIndex = CurrentSection.Vertex.Num();
 
-				FVector Intersect = VertexInterpolate(v1, v2, ThisData[e1].Value, ThisData[e2].Value);
+				FVector Intersect = VertexInterpolate(v1, v2, Val1, Val2);
+
+				CurrentSection.Normal.Add(CalculateGradient(Intersect));
+
 				FVector2D UVs = FVector2D(RealNodePos.X + Intersect.X, RealNodePos.Y + Intersect.Y);
 
 				CurrentSection.Vertex.Add(Intersect * VoxelSize);
@@ -123,13 +131,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 			}
 		}
 	}
-	
-	for (auto& Section : Result.PolygonizedSections)
-	{
-		URuntimeMeshLibrary::CalculateTangentsForMesh(Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Tangent, true);
-	}
 
-	FMemory::SystemFree(CachedData);
 
 	return true;
 }
@@ -174,6 +176,49 @@ inline FVector IVoxel_MCPolygonizer::VertexInterpolate(FVector P1, FVector P2, f
 	return FMath::Lerp(P1, P2, (-D1) / (D2 - D1));
 }
 
+inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData(FIntVector Pos)
+{
+	if (Pos.GetMax() < IVOX_CHUNKDATASIZE && Pos.GetMin() >= 0)
+	{
+		return CachedData[AIVoxel_Chunk::IndexFor(Pos)];
+	}
+	else
+	{
+		return GetBlockData_Ex(Pos);
+	}
+}
+
+inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData_Ex(FIntVector Pos)
+{
+	FIVoxel_BlockData Out;
+	ChunkData->DataOctree->MainDataOctree->SingleData(FOctree::GetMinimalPosition(NodePos, Depth) + (Pos * FOctree::StepEachBlock(Depth)), ChunkData->IVoxWorld->WorldGeneratorInstanced, Out);
+	return Out;
+}
+
+inline void IVoxel_MCPolygonizer::FindBestVertexInLODChain(int Level, FVector& P0, FVector& P1, float& V0, float& V1)
+{
+	for (int Lev = Level; Lev > 0; Lev--)
+	{
+		const auto MidPoint = (P0 + P1) / 2;
+
+		const auto MidValue = GetBlockData_Ex(FIntVector(MidPoint)).Value;
+		const auto P0Value = GetBlockData_Ex(FIntVector(P0)).Value;
+		const auto P1Value = GetBlockData_Ex(FIntVector(P1)).Value;
+
+		if ((P0Value * MidValue) <= 0)
+		{
+			P1 = MidPoint;
+		}
+		else
+		{
+			P0 = MidPoint;
+		}
+		V0 = P0Value;
+		V1 = P1Value;
+		check(P0.X == P1.X || P0.Y == P1.Y || P0.Z == P1.Z);
+	}
+}
+
 inline FVector IVoxel_MCPolygonizer::CalculateNormal(FVector P1, FVector P2, FVector P3)
 {
 	float A = P1.Y * (P2.Z - P3.Z) + P2.Y * (P3.Z - P1.Z) + P3.Y * (P1.Z - P2.Z);
@@ -187,5 +232,14 @@ inline FVector IVoxel_MCPolygonizer::CalculateNormal(FVector P1, FVector P2, FVe
 
 inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
 {
-	return FVector();
+	FIntVector IV = FIntVector(Point);
+
+	const FIntVector UX = FIntVector(1, 0, 0);
+	const FIntVector UY = FIntVector(0, 1, 0);
+	const FIntVector UZ = FIntVector(0, 0, 1);
+
+	FVector Normal = FVector(GetBlockData_Ex(IV + UX).Value - GetBlockData_Ex(IV - UX).Value
+							 , GetBlockData_Ex(IV + UY).Value - GetBlockData_Ex(IV - UY).Value
+							 , GetBlockData_Ex(IV + UZ).Value - GetBlockData_Ex(IV - UZ).Value);
+	return Normal.GetSafeNormal();
 }

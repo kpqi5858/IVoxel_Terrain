@@ -9,7 +9,7 @@ FOctree::FOctree()
 FOctree::FOctree(FIntVector Position, uint8 Depth, FOctree* Parent)
 	: Depth(Depth), Position(Position), HasChilds(false), Data(nullptr), Parent(Parent), IsEditedLastLODMake(false)
 {
-	check(Depth < 32); //Size() max
+	check(Depth < 28); //Size() max
 }
 
 FOctree::~FOctree()
@@ -215,6 +215,33 @@ void FOctree::GetData(FIntVector OctreeLoc, FVector Offset, uint8 TargetDepth, U
 	}
 }
 
+void FOctree::SingleData(FIntVector Pos, UIVoxel_WorldGenerator* WorldGen, FIVoxel_BlockData& Out)
+{
+	if (!IsInOctree(Pos))
+	{
+		Out = WorldGen->GetBlockData(Pos.X, Pos.Y, Pos.Z);
+		return;
+	}
+	if (HasChilds)
+	{
+		GetChildOctree(Pos)->SingleData(Pos, WorldGen, Out);
+		return;
+	}
+	else
+	{
+		if (Data)
+		{
+			FIntVector Index = Pos - GetMinimalPosition() / StepEachBlock(Depth);
+			Out = Data[IndexFor(Index)];
+		}
+		else
+		{
+			Out = WorldGen->GetBlockData(Pos.X, Pos.Y, Pos.Z);
+		}
+
+	}
+}
+
 void FOctree::SetData(FIntVector LocalPos, FIVoxel_BlockData Block, FVector Offset, UIVoxel_WorldGenerator* WorldGen)
 {
 	check(Depth == 0);
@@ -232,10 +259,11 @@ void FOctree::MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBl
 	if (HasChilds)
 	{
 		check(Depth > 0);
-
+		bool NewDataFlag = false;
 		if (!Data)
 		{
 			InitDataDefault();
+			NewDataFlag = true;
 		}
 
 		int HalfDataSize = IVOX_CHUNKDATASIZE / 2;
@@ -250,7 +278,8 @@ void FOctree::MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBl
 
 			FOctree* Child = GetChildOctree(Position + FIntVector(XSign, YSign, ZSign));
 
-			if (!Child->IsEditedLastLODMake) continue;
+			if (!Child->IsEditedLastLODMake && !NewDataFlag) continue;
+
 			if (bBlendData)
 			{
 				if (Child->Data)
@@ -322,30 +351,16 @@ void FOctree::GetChildOctreesIntersect(FIntVector Target, TSet<FOctree*>& RetVal
 	}
 }
 
-inline FIntVector FOctree::GetMinimalPosition()
+FIntVector FOctree::GetMinimalPosition()
 {
 	return GetMinimalPosition(Position, Depth);
 }
 
-inline FIntVector FOctree::GetMaximumPosition()
+FIntVector FOctree::GetMaximumPosition()
 {
 	return GetMaximumPosition(Position, Depth);
 }
 
-FVector FOctree::GetMinimalPosition_World()
-{
-	return GetMinimalPosition_World(Position, Depth);
-}
-
-FVector FOctree::GetMaximumPosition_World()
-{
-	return GetMaximumPosition_World(Position, Depth);
-}
-
-FVector FOctree::GetPosition_World()
-{
-	return GetPosition_World(Position, Depth);
-}
 inline void FOctree::InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset)
 {
 	InitDataInternal();

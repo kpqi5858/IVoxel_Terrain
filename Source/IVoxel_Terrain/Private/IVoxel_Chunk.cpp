@@ -183,8 +183,8 @@ void AIVoxel_Chunk::RenderOctreeTick()
 			}
 		}
 
-		Comp->SetRelativeLocation(Node->GetMinimalPosition_World() * Manager->VoxelSizeInit / 2);
-		//Comp->SetWorldScale3D(FVector(Node->Size() / 2)); //Is this causes lag?
+		Comp->SetRelativeLocation(FVector(Node->GetMinimalPosition()) * Manager->VoxelSizeInit);
+		Comp->SetWorldScale3D(FVector(Node->Size() / IVOX_CHUNKDATASIZE)); //Is this causes lag?
 
 		auto Polygonizer = Manager->GetPolygonizer(this, Node);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, CLoc, Polygonizer); //Will automatically deleted
@@ -223,7 +223,7 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 		}
 		else
 		{
-			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, Section.Tangent, ShouldCreateCollision);
+			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, /*Section.Tangent*/TArray<FRuntimeMeshTangent>(), ShouldCreateCollision);
 		}
 	}
 }
@@ -315,32 +315,24 @@ void AIVoxel_Chunk::DeRegisterTickList(UIVoxelNodeChunk* Chunk)
 	TickList.Remove(Chunk);
 }
 
-void AIVoxel_Chunk::EditWorldTest(FVector Position)
+void AIVoxel_Chunk::EditWorldTest(FVector Position, bool bCreate)
 {
-	int Radius = 10;
+	FIntVector BasePos = FIntVector((Position - GetActorLocation()) / Manager->VoxelSizeInit);
 
-	DataOctree->Begin();
-	Position /= Manager->VoxelSizeInit;
-	Position *= 2;
+	int Radius = 5;
 
-	for (int x = -Radius; x < Radius; x++)
-		for (int y = -Radius; y < Radius; y++)
-			for (int z = -Radius; z < Radius; z++)
-			{
-				FVector APos = (Position + FVector(x, y, z)) / IVOX_CHUNKDATASIZE;
-				
-				FIntVector OctreeLocal = FIntVector(FMath::FloorToInt(APos.X), FMath::FloorToInt(APos.Y), FMath::FloorToInt(APos.Z));
-				FOctree* Node = DataOctree->MainDataOctree->GetOctree(OctreeLocal, 0);
-				DataOctree->EditedNode(Node);
-				
-				FIntVector Local = FIntVector(APos - (Node->GetMinimalPosition_World()/2));
-				//Local /= 2;
-				Node->SetData(Local, FIVoxel_BlockData(Radius - FVector(x, y, z).Size(), FColor::White, 0), FVector(0), IVoxWorld->WorldGeneratorInstanced);
-
-				UpdateChunkAt(Node->Position);
-			}
-
-	DataOctree->End();
+	for (int X = -Radius; X < Radius; X++)
+	for (int Y = -Radius; Y < Radius; Y++)
+	for (int Z = -Radius; Z < Radius; Z++)
+	{
+		FIntVector Temp = BasePos + FIntVector(X, Y, Z);
+		float Val = Radius - FVector(BasePos - Temp).Size();
+		if (Val < 0) continue;
+		FOctree* Target = DataOctree->MainDataOctree->GetOctree(Temp, 0);
+		Target->SetData(Temp - Target->GetMinimalPosition(), FIVoxel_BlockData(bCreate ? Val : -Val, FColor::White, 0), FVector(0), IVoxWorld->WorldGeneratorInstanced);
+		UpdateChunkAt(Target->Position);
+		DataOctree->EditedNode(Target);
+	}
 }
 
 uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
@@ -348,11 +340,11 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	auto Curve = IVoxWorld->LodCurve;
 	int MaxDepth = Manager->OctreeDepthInit;
 
-	FVector Pos = Node->GetPosition_World() * Manager->VoxelSizeInit / 2 + GetActorLocation();
+	FVector Pos = FVector(Node->Position) * Manager->VoxelSizeInit + GetActorLocation() / IVOX_CHUNKDATASIZE;
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.2), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.4), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

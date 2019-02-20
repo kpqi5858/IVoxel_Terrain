@@ -8,7 +8,9 @@ FIVoxel_DataManager::FIVoxel_DataManager(AIVoxel_Chunk* Chunk)
 
 void FIVoxel_DataManager::EditedNode(FOctree* Node)
 {
+	FScopeLock sl(&EditedOctreeLock);
 	check(Node->Depth == 0);
+	
 	EditedOctree.Add(Node);
 }
 
@@ -24,6 +26,7 @@ void FIVoxel_DataManager::End()
 
 inline void FIVoxel_DataManager::MakeLOD()
 {
+	FScopeLock sl(&EditedOctreeLock);
 	for (auto& Node : EditedOctree)
 	{
 		Node->MakeLOD(Chunk->IVoxWorld->WorldGeneratorInstanced, FVector(0), false);

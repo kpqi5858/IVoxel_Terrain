@@ -90,24 +90,15 @@ public:
 	//bBlendData - Blend the data instead of just copy with pattern, better detail, more expensive
 	void MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBlendData);
 
-	//To calculate gradient, transition, etc
-	//Array structure
-	//0 ~ (IVOX_CHUNKDATASIZE*Extended*6) - Edges  (Forward Backward Left Right Up Down)
-	//. ~ .+(Extended*Extended*8)		  - Points (Same as Octree child location)
-	void GetDataExtended(FIntVector OctreeLoc, FVector Offset, int Extended, UIVoxel_WorldGenerator* WorldGen, FIVoxel_BlockData* OutArray);
+	void SingleData(FIntVector Pos, UIVoxel_WorldGenerator* WorldGen, FIVoxel_BlockData& Out);
 
 	//Subdivides with LodCurve
 	void LodSubdivide(AIVoxel_Chunk* Chunk);
 
 	void GetChildOctreesIntersect(FIntVector Target, TSet<FOctree*> &RetValue);
 
-	inline FIntVector GetMinimalPosition();
-	inline FIntVector GetMaximumPosition();
-
-	FVector GetMinimalPosition_World();
-	FVector GetMaximumPosition_World();
-
-	FVector GetPosition_World();
+	FIntVector GetMinimalPosition();
+	FIntVector GetMaximumPosition();
 
 	void DebugRender(UWorld* world);
 
@@ -124,21 +115,6 @@ public:
 	static inline FIntVector GetMaximumPosition(FIntVector Position, uint8 Depth)
 	{
 		return Position + FIntVector(SizeFor(Depth) / 2);
-	}
-
-	static inline FVector GetMinimalPosition_World(FIntVector Position, uint8 Depth)
-	{
-		return FVector(GetMinimalPosition(Position, Depth)) * IVOX_CHUNKDATASIZE;
-	}
-
-	static inline FVector GetMaximumPosition_World(FIntVector Position, uint8 Depth)
-	{
-		return FVector(GetMaximumPosition(Position, Depth)) * IVOX_CHUNKDATASIZE;
-	}
-
-	static inline FVector GetPosition_World(FIntVector Position, uint8 Depth)
-	{
-		return FVector(Position) * IVOX_CHUNKDATASIZE;
 	}
 
 	static inline int IndexFor(int x, int y, int z)
@@ -159,16 +135,19 @@ public:
 
 	static inline int SizeFor(uint8 Dep)
 	{
-		return 2 << Dep;
+		return IVOX_CHUNKDATASIZE << Dep;
+	}
+
+	static int StepEachBlock(uint8 Dep)
+	{
+		return SizeFor(Dep) / IVOX_CHUNKDATASIZE;
 	}
 
 	static inline FVector GetWorldGenPos(FIntVector ExactPos, FIntVector Global, uint8 TargetDepth, FVector Offset)
 	{
-		int LodStep = SizeFor(TargetDepth);
+		int LodStep = StepEachBlock(TargetDepth);
 
-		FVector Temp = FVector(Global);
-		FVector loc = GetMinimalPosition_World(ExactPos, TargetDepth) + FVector(Temp * LodStep) - FVector(GetMinimalPosition(ExactPos, TargetDepth));
-		loc /= 2;
+		FVector loc = FVector(GetMinimalPosition(ExactPos, TargetDepth) + (Global * LodStep));
 		loc += Offset;
 		return loc;
 	}

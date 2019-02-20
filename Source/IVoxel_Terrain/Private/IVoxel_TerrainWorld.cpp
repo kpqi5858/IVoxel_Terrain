@@ -32,43 +32,15 @@ void AIVoxel_TerrainWorld::BeginPlay()
 	{
 		WorldGeneratorInstanced = NewObject<UIVoxel_FlatWorldGenerator>(this, UIVoxel_FlatWorldGenerator::StaticClass());
 	}
+
 	WorldGeneratorInstanced->WorldGenScale = WorldGenScale;
 	WorldGeneratorInstanced->AddToRoot();
-	check(WorldGeneratorInstanced);
+
 
 	WorldGeneratorInstanced->ConstructionScript();
 
 	Manager = new IVoxel_TerrainManager(this);
 	Manager->CreateStartChunks();
-	/*
-	auto FlatWorldGen = new IVoxel_NoiseWorldGenerator();
-
-	for (int x = -5; x < 5; x++)
-	for (int y = -5; y < 5; y++)
-	for (int z = -5; z < 5; z++)
-	{
-		FActorSpawnParameters SpawnParm;
-		SpawnParm.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		auto chunk = GetWorld()->SpawnActor<AIVoxel_Chunk>(GetActorLocation(), GetActorRotation(), SpawnParm);
-		chunk->Setup(this, FIntVector(x, y, z));
-		chunk->GenerateChunkData(FlatWorldGen);
-
-		auto Polygonizer = new IVoxel_MCPolygonizer(chunk);
-		IVoxel_PolygonizedData PolygonizedData;
-
-		if (Polygonizer->Polygonize(PolygonizedData))
-		{
-			UE_LOG(LogIVoxel, Warning, TEXT("%d %d"), PolygonizedData.PolygonizedSections[0].Vertex.Num(), PolygonizedData.PolygonizedSections[0].Triangle.Num())
-			chunk->ApplyPolygonized(PolygonizedData);
-		}
-		else
-		{
-			UE_LOG(LogIVoxel, Error, TEXT("Can't polygonize"));
-		}
-		delete Polygonizer;
-	}
-	delete FlatWorldGen;
-	*/
 }
 
 // Called every frame

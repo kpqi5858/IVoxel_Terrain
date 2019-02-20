@@ -103,7 +103,7 @@ public:
 	void DeRegisterTickList(UIVoxelNodeChunk* Chunk);
 
 	UFUNCTION(BlueprintCallable)
-	void EditWorldTest(FVector Position);
+	void EditWorldTest(FVector Position, bool bCreate);
 
 	static inline int IndexFor(int x, int y, int z)
 	{

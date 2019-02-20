@@ -35,7 +35,8 @@ private:
 	TArray<VertexCacheSectionData> VertexIndexCache;
 	int VoxelMaterialMax; //Cached
 
-	FIVoxel_BlockData* CachedData;
+	FIVoxel_BlockData CachedData[IVOX_CHUMKDATAARRAYSIZE];
+
 	FIVoxel_BlockData* ExtendedCachedData; //For gradient normals, etc
 
 public:
@@ -59,6 +60,10 @@ private:
 	inline FVector CalculateGradient(FVector Point);
 
 	inline FIVoxel_BlockData GetBlockData(FIntVector Pos);
+
+	inline FIVoxel_BlockData GetBlockData_Ex(FIntVector Pos);
+
+	inline void FindBestVertexInLODChain(int Level, FVector& P0, FVector& P1, float& V0, float& V1);
 
 public:
 	static inline FVector VertexInterpolate(FVector P1, FVector P2, float D1, float D2);

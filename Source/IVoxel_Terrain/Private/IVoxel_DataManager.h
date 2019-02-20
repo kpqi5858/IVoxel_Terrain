@@ -16,6 +16,8 @@ public:
 
 	TSharedPtr<FOctree> MainDataOctree;
 
+	FCriticalSection EditedOctreeLock;
+
 	//If edited an octree node, please call this function
 	void EditedNode(FOctree* Node);
 
@@ -23,4 +25,6 @@ public:
 	void End();   //Unlocks access for MainDataOctree
 
 	inline void MakeLOD();
+
+	void GetSingleData(FVector Location);
 };
