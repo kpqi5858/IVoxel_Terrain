@@ -13,12 +13,13 @@ bool IVoxel_CubePolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	float VoxelSize = Chunk->IVoxWorld->GetVoxelSize() * ((float)IVOX_CHUNKDATASIZE / (IVOX_CHUNKDATASIZE - 1))
 		* (FOctree::SizeFor(Depth) / 2);
 
-	Chunk->DataOctree->Begin();
+	Chunk->DataOctree->Begin(FRWScopeLockType::SLT_ReadOnly);
 
-	Chunk->DataOctree->MainDataOctree->GetData(NodePos, Chunk->GetDataLocation(), Depth, Chunk->IVoxWorld->WorldGeneratorInstanced, CachedData);
+	Chunk->DataOctree->GetData(NodePos, Depth, CachedData);
 
-	Chunk->DataOctree->End();
-	
+	Chunk->DataOctree->End(FRWScopeLockType::SLT_ReadOnly);
+
+
 	Result.PolygonizedSections.Init(IVoxel_PolygonizedSubData(), VoxelMaterialMax);
 
 

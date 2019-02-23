@@ -83,17 +83,25 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 
 	if (InternalTicks % Rate == 0) RenderOctreeTick();
 
+	TSet<UIVoxelNodeChunk*> Ignored;
+
 	for (auto& Ch : ToUpdate)
 	{
+		if (Ch->PolygonizerThread)
+		{
+			Ignored.Add(Ch);
+			continue;
+		}
 		auto Polygonizer = Manager->GetPolygonizer(this, Ch->NodePos, Ch->NodeDepth);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, Ch->NodePos, Polygonizer); //Will automatically deleted
 
-		checkf(!Ch->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
+		//checkf(!Ch->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
 		Ch->PolygonizerThread = PolygonizerThread;
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
 
 	ToUpdate.Reset();
+	ToUpdate.Append(Ignored);
 }
 
 void AIVoxel_Chunk::RenderOctreeTick()
@@ -304,6 +312,7 @@ void AIVoxel_Chunk::QueueUnload(UIVoxelNodeChunk* Chunk)
 void AIVoxel_Chunk::UnloadRMC(UIVoxelNodeChunk* Chunk)
 {
 	check(!FreeLeaves.Contains(Chunk));
+	check(!Chunk->PolygonizerThread);
 	Chunk->ClearAllMeshSections();
 	FreeLeaves.Add(Chunk);
 }
@@ -320,24 +329,47 @@ void AIVoxel_Chunk::DeRegisterTickList(UIVoxelNodeChunk* Chunk)
 	TickList.Remove(Chunk);
 }
 
-void AIVoxel_Chunk::EditWorldTest(FVector Position, bool bCreate)
+void AIVoxel_Chunk::EditWorldTest(FVector Position, float Radius, bool bCreate)
 {
 	FIntVector BasePos = FIntVector((Position - GetActorLocation()) / Manager->VoxelSizeInit);
 
-	int Radius = 5;
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
+	
+	DataOctree->Begin(FRWScopeLockType::SLT_Write);
 
-	for (int X = -Radius; X < Radius; X++)
-	for (int Y = -Radius; Y < Radius; Y++)
-	for (int Z = -Radius; Z < Radius; Z++)
+	for (int X = -IntRadius; X < IntRadius; X++)
+	for (int Y = -IntRadius; Y < IntRadius; Y++)
+	for (int Z = -IntRadius; Z < IntRadius; Z++)
 	{
-		FIntVector Temp = BasePos + FIntVector(X, Y, Z);
-		float Val = Radius - FVector(BasePos - Temp).Size();
-		if (Val < 0) continue;
-		FOctree* Target = DataOctree->MainDataOctree->GetOctree(Temp, 0);
-		Target->SetData(Temp - Target->GetMinimalPosition(), FIVoxel_BlockData(bCreate ? Val : -Val, FColor::White, 0), FVector(0), IVoxWorld->WorldGeneratorInstanced);
-		UpdateChunkAt(Target->Position);
-		DataOctree->EditedNode(Target);
+		FIntVector CurrentPos = BasePos + FIntVector(X, Y, Z);
+		float Dist = FVector(X, Y, Z).Size();
+
+		if (Dist <= Radius + 2)
+		{
+			float Value = FMath::Clamp(Radius - Dist, -2.f, 2.f) / 2.f;
+			if (Value == 0) Value = 0.0001f;
+			Value *= bCreate ? -1 : 1;
+
+			FIVoxel_BlockData& Block = DataOctree->RefSingleData(CurrentPos);
+			float OldValue = Block.Value;
+
+			bool Valid;
+			if ((Value <= 0 && bCreate) || (Value > 0 && !bCreate))
+			{
+				Valid = true;
+			}
+			else
+			{
+				Valid = (OldValue >= 0) == (Value >= 0);
+			}
+			if (Valid)
+			{
+				Block.Value = Value;
+			}
+		}
 	}
+
+	DataOctree->End(FRWScopeLockType::SLT_Write);
 }
 
 uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)

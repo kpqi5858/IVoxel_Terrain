@@ -15,11 +15,11 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 	FVector RealNodePos = FVector(NodePos);
 
-	ChunkData->DataOctree->Begin();
+	ChunkData->DataOctree->Begin(FRWScopeLockType::SLT_ReadOnly);
 
-	ChunkData->DataOctree->MainDataOctree->GetData(NodePos, ChunkData->GetDataLocation(), Depth, ChunkData->IVoxWorld->WorldGeneratorInstanced, CachedData);
+	ChunkData->DataOctree->GetData(NodePos, Depth, CachedData);
 
-	ChunkData->DataOctree->End();
+	ChunkData->DataOctree->End(FRWScopeLockType::SLT_ReadOnly);
 
 	//Cache vertex index seperate with material
 	VertexIndexCache.Init(VertexCacheSectionData(), VoxelMaterialMax);
@@ -190,9 +190,7 @@ inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData(FIntVector Pos)
 
 inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData_Ex(FIntVector Pos)
 {
-	FIVoxel_BlockData Out;
-	ChunkData->DataOctree->MainDataOctree->SingleData(FOctree::GetMinimalPosition(NodePos, Depth) + (Pos * FOctree::StepEachBlock(Depth)), ChunkData->IVoxWorld->WorldGeneratorInstanced, Out);
-	return Out;
+	return ChunkData->DataOctree->GetSingleData(FOctree::GetMinimalPosition(NodePos, Depth) + (Pos * FOctree::StepEachBlock(Depth)));
 }
 
 inline void IVoxel_MCPolygonizer::FindBestVertexInLODChain(int Level, FVector& P0, FVector& P1, float& V0, float& V1)
@@ -241,5 +239,5 @@ inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
 	FVector Normal = FVector(GetBlockData_Ex(IV + UX).Value - GetBlockData_Ex(IV - UX).Value
 							 , GetBlockData_Ex(IV + UY).Value - GetBlockData_Ex(IV - UY).Value
 							 , GetBlockData_Ex(IV + UZ).Value - GetBlockData_Ex(IV - UZ).Value);
-	return Normal.GetSafeNormal();
+	return -Normal.GetSafeNormal();
 }

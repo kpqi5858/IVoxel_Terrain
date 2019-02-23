@@ -53,7 +53,7 @@ public:
 	inline bool IsInOctree(FIntVector Location);
 
 	//Initialize data with world generator
-	inline void InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset = FVector(0));
+	void InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset = FVector(0));
 
 	//Initialize data with default constructor
 	void InitDataDefault();
@@ -90,7 +90,8 @@ public:
 	//bBlendData - Blend the data instead of just copy with pattern, better detail, more expensive
 	void MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBlendData);
 
-	void SingleData(FIntVector Pos, UIVoxel_WorldGenerator* WorldGen, FIVoxel_BlockData& Out);
+
+	FIVoxel_BlockData* SingleData(FIntVector Pos);
 
 	//Subdivides with LodCurve
 	void LodSubdivide(AIVoxel_Chunk* Chunk);

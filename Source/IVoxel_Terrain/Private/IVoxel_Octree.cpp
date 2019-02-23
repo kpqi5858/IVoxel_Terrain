@@ -7,7 +7,7 @@ FOctree::FOctree()
 }
 
 FOctree::FOctree(FIntVector Position, uint8 Depth, FOctree* Parent)
-	: Depth(Depth), Position(Position), HasChilds(false), Data(nullptr), Parent(Parent), IsEditedLastLODMake(false)
+	: Depth(Depth), Position(Position), HasChilds(false), Data(nullptr), Parent(Parent), IsEditedLastLODMake(true)
 {
 	check(Depth < 28); //Size() max
 }
@@ -215,30 +215,24 @@ void FOctree::GetData(FIntVector OctreeLoc, FVector Offset, uint8 TargetDepth, U
 	}
 }
 
-void FOctree::SingleData(FIntVector Pos, UIVoxel_WorldGenerator* WorldGen, FIVoxel_BlockData& Out)
+FIVoxel_BlockData* FOctree::SingleData(FIntVector Pos)
 {
 	if (!IsInOctree(Pos))
 	{
-		Out = WorldGen->GetBlockData(Pos.X, Pos.Y, Pos.Z);
-		return;
+		return nullptr;
 	}
 	if (HasChilds)
 	{
-		GetChildOctree(Pos)->SingleData(Pos, WorldGen, Out);
-		return;
+		return GetChildOctree(Pos)->SingleData(Pos);
+	}
+	if (Data)
+	{
+		FIntVector Index = Pos - GetMinimalPosition() / StepEachBlock(Depth);
+		return &Data[IndexFor(Index)];
 	}
 	else
 	{
-		if (Data)
-		{
-			FIntVector Index = Pos - GetMinimalPosition() / StepEachBlock(Depth);
-			Out = Data[IndexFor(Index)];
-		}
-		else
-		{
-			Out = WorldGen->GetBlockData(Pos.X, Pos.Y, Pos.Z);
-		}
-
+		return nullptr;
 	}
 }
 
@@ -259,11 +253,9 @@ void FOctree::MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBl
 	if (HasChilds)
 	{
 		check(Depth > 0);
-		bool NewDataFlag = false;
 		if (!Data)
 		{
 			InitDataDefault();
-			NewDataFlag = true;
 		}
 
 		int HalfDataSize = IVOX_CHUNKDATASIZE / 2;
@@ -278,7 +270,7 @@ void FOctree::MakeLOD(UIVoxel_WorldGenerator* WorldGen, FVector Offset, bool bBl
 
 			FOctree* Child = GetChildOctree(Position + FIntVector(XSign, YSign, ZSign));
 
-			if (!Child->IsEditedLastLODMake && !NewDataFlag) continue;
+			if (!Child->IsEditedLastLODMake) continue;
 
 			if (bBlendData)
 			{
@@ -361,7 +353,7 @@ FIntVector FOctree::GetMaximumPosition()
 	return GetMaximumPosition(Position, Depth);
 }
 
-inline void FOctree::InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset)
+void FOctree::InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset)
 {
 	InitDataInternal();
 	FillArrayWithWorldGenerator(Position, Depth, WorldGen, Data, Offset);
