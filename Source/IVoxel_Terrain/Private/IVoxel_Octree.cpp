@@ -65,6 +65,15 @@ inline bool FOctree::IsInOctree(FIntVector Location)
 		&& Location.Z <= P1.Z && Location.Z >= P2.Z; //Z
 }
 
+bool FOctree::IsInOctree_External(FIntVector Location)
+{
+	FIntVector P1 = GetMaximumPosition();
+	FIntVector P2 = GetMinimalPosition();
+	return Location.X <= P1.X && Location.X >= P2.X  //X
+		&& Location.Y <= P1.Y && Location.Y >= P2.Y  //Y
+		&& Location.Z <= P1.Z && Location.Z >= P2.Z; //Z
+}
+
 int FOctree::Size() const
 {
 	return SizeFor(Depth);

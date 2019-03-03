@@ -33,6 +33,7 @@ public:
 
 	FIVoxel_BlockData& RefSingleData(FIntVector Location);
 	FIVoxel_BlockData GetSingleData(FIntVector Location);
+	FIVoxel_BlockData GetSingleData(FIntVector Location, FOctree*& LastOctree);
 
 	void GetData(FIntVector NodePos, uint8 Depth, FIVoxel_BlockData* ToFill);
 };

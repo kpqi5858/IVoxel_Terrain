@@ -52,6 +52,8 @@ public:
 
 	inline bool IsInOctree(FIntVector Location);
 
+	bool IsInOctree_External(FIntVector Location);
+
 	//Initialize data with world generator
 	void InitDataWithWorldGen(UIVoxel_WorldGenerator* WorldGen, FVector Offset = FVector(0));
 

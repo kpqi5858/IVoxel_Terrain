@@ -62,19 +62,51 @@ FIVoxel_BlockData& FIVoxel_DataManager::RefSingleData(FIntVector Location)
 	return *Node->SingleData(Location);
 }
 
-FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location)
+FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location, FOctree*& LastOctree)
 {
 	FRWScopeLock(DataLock, FRWScopeLockType::SLT_ReadOnly);
 
-	FIVoxel_BlockData* Pointer = MainDataOctree->SingleData(Location);
+
+	FIVoxel_BlockData* Pointer = nullptr;
+
+	if (LastOctree && LastOctree->IsInOctree_External(Location))
+	{
+		Pointer = LastOctree->SingleData(Location);
+	}
+	else if (MainDataOctree->IsInOctree_External(Location))
+	{
+		FOctree* Node = MainDataOctree->GetOctree_NoSub(Location);
+		if (Node->Depth == 0)
+		{
+			LastOctree = Node;
+		}
+		Pointer = Node->SingleData(Location);
+	}
+
 	if (Pointer)
 	{
 		return *Pointer;
 	}
 	else
 	{
-		FIVoxel_BlockData Block = Chunk->IVoxWorld->WorldGeneratorInstanced->GetBlockData(Location.X, Location.Y, Location.Z);
-		return Block;
+		return Chunk->IVoxWorld->WorldGeneratorInstanced->GetBlockData(Location.X, Location.Y, Location.Z);
+	}
+}
+
+FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location)
+{
+	FRWScopeLock(DataLock, FRWScopeLockType::SLT_ReadOnly);
+
+
+	FIVoxel_BlockData* Pointer = MainDataOctree->SingleData(Location);
+
+	if (Pointer)
+	{
+		return *Pointer;
+	}
+	else
+	{
+		return Chunk->IVoxWorld->WorldGeneratorInstanced->GetBlockData(Location.X, Location.Y, Location.Z);
 	}
 }
 

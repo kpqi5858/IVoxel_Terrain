@@ -17,10 +17,10 @@ void UIVoxelNodeChunk::Unload()
 		bool Result = Chunk->Manager->MesherThreadPool->RetractQueuedWork(PolygonizerThread);
 		PolygonizerThread = nullptr;
 		//Don't care whatever RetractQueuedWork succeed
-		//Unload() called means this chunk will deregistered in tick list.
-		DecreaseOCReset();
+		//Unload() called means this chunk will deregistered in tick list
 		Chunk->DoingThreadedJob.Decrement();
 	}
+	DecreaseOCReset();
 	IsPolygonizeDone = false;
 	HasMesh = false;
 }

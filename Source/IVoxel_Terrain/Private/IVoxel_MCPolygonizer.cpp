@@ -84,10 +84,10 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 				float Val1 = ThisData[e1].Value;
 				float Val2 = ThisData[e2].Value;
 
-				/*if (Depth)
+				if (Depth)
 				{
 					FindBestVertexInLODChain(Depth, v1, v2, Val1, Val2);
-				}*/
+				}
 
 				FColor Color = Val1 < 0 ? ThisData[e1].Color : ThisData[e2].Color;
 
@@ -190,7 +190,12 @@ inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData(FIntVector Pos)
 
 inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData_Ex(FIntVector Pos)
 {
-	return ChunkData->DataOctree->GetSingleData(FOctree::GetMinimalPosition(NodePos, Depth) + (Pos * FOctree::StepEachBlock(Depth)));
+	return GetBlockData_Ex(FVector(Pos));
+}
+
+inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData_Ex(FVector Pos)
+{
+	return GetBlockData_Global(LocalVertexPosToGlobal(Pos));
 }
 
 inline void IVoxel_MCPolygonizer::FindBestVertexInLODChain(int Level, FVector& P0, FVector& P1, float& V0, float& V1)
@@ -199,11 +204,11 @@ inline void IVoxel_MCPolygonizer::FindBestVertexInLODChain(int Level, FVector& P
 	{
 		const auto MidPoint = (P0 + P1) / 2;
 
-		const auto MidValue = GetBlockData_Ex(FIntVector(MidPoint)).Value;
-		const auto P0Value = GetBlockData_Ex(FIntVector(P0)).Value;
-		const auto P1Value = GetBlockData_Ex(FIntVector(P1)).Value;
+		const auto MidValue = GetBlockData_Ex(MidPoint).Value;
+		const auto P0Value = GetBlockData_Ex(P0).Value;
+		const auto P1Value = GetBlockData_Ex(P1).Value;
 
-		if ((P0Value * MidValue) <= 0)
+		if ((P0Value >= 0) != (MidValue >= 0))
 		{
 			P1 = MidPoint;
 		}
@@ -240,4 +245,19 @@ inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
 							 , GetBlockData_Ex(IV + UY).Value - GetBlockData_Ex(IV - UY).Value
 							 , GetBlockData_Ex(IV + UZ).Value - GetBlockData_Ex(IV - UZ).Value);
 	return -Normal.GetSafeNormal();
+}
+
+inline FIntVector IVoxel_MCPolygonizer::LocalVertexPosToGlobal(FVector Point)
+{
+	return FOctree::GetMinimalPosition(NodePos, Depth) + FIntVector(Point * FOctree::StepEachBlock(Depth));
+}
+
+inline FVector IVoxel_MCPolygonizer::GlobalToLocalVertex(FIntVector Point)
+{
+	return FVector(Point - FOctree::GetMinimalPosition(NodePos, Depth)) / FOctree::StepEachBlock(Depth);
+}
+
+inline FIVoxel_BlockData IVoxel_MCPolygonizer::GetBlockData_Global(FIntVector Pos)
+{
+	return ChunkData->DataOctree->GetSingleData(Pos);
 }

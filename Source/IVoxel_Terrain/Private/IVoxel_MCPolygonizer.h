@@ -48,6 +48,8 @@ public:
 
 	AIVoxel_Chunk* ChunkData;
 
+	FOctree* LastOctree = nullptr;
+
 	bool Polygonize(IVoxel_PolygonizedData& Result) override;
 
 	inline bool GetCachedVertex(FIntVector Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out);
@@ -63,8 +65,15 @@ private:
 
 	inline FIVoxel_BlockData GetBlockData_Ex(FIntVector Pos);
 
+	inline FIVoxel_BlockData GetBlockData_Ex(FVector Pos);
+
 	inline void FindBestVertexInLODChain(int Level, FVector& P0, FVector& P1, float& V0, float& V1);
 
+	inline FIntVector LocalVertexPosToGlobal(FVector Point);
+
+	inline FVector GlobalToLocalVertex(FIntVector Point);
+
+	inline FIVoxel_BlockData GetBlockData_Global(FIntVector Pos);
 public:
 	static inline FVector VertexInterpolate(FVector P1, FVector P2, float D1, float D2);
 
