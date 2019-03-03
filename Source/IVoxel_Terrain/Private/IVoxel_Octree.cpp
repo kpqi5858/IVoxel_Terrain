@@ -230,14 +230,19 @@ FIVoxel_BlockData* FOctree::SingleData(FIntVector Pos)
 	{
 		return nullptr;
 	}
+	if (Data)
+	{
+		FIntVector Index = (Pos - GetMinimalPosition()) / StepEachBlock(Depth);
+
+		if (Index * StepEachBlock(Depth) == Pos - GetMinimalPosition())
+		{
+			//Use lod cache
+			return &Data[IndexFor(Index)];
+		}
+	}
 	if (HasChilds)
 	{
 		return GetChildOctree(Pos)->SingleData(Pos);
-	}
-	if (Data)
-	{
-		FIntVector Index = Pos - GetMinimalPosition() / StepEachBlock(Depth);
-		return &Data[IndexFor(Index)];
 	}
 	else
 	{

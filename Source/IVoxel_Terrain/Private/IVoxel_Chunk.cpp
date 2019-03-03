@@ -381,7 +381,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.4), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.7), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)
