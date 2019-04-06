@@ -52,14 +52,14 @@ public:
 
 	bool Polygonize(IVoxel_PolygonizedData& Result) override;
 
-	inline bool GetCachedVertex(FIntVector Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out);
+	inline bool GetCachedVertex(FIntVector& Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out);
 
 	inline void CacheVertex(FIntVector Pos, uint16 BlockType, int EdgeIndex, int Index);
 
 	inline int SafeSectionIndex(int Original);
 
 private:
-	inline FVector CalculateGradient(FVector Point);
+	inline FVector CalculateGradient(FVector& Point);
 
 	inline FIVoxel_BlockData GetBlockData(FIntVector Pos);
 
@@ -75,7 +75,7 @@ private:
 
 	inline FIVoxel_BlockData GetBlockData_Global(FIntVector Pos);
 public:
-	static inline FVector VertexInterpolate(FVector P1, FVector P2, float D1, float D2);
+	static inline FVector VertexInterpolate(FVector& P1, FVector& P2, float& D1, float& D2);
 
 	static inline FVector CalculateNormal(FVector P1, FVector P2, FVector P3);
 };

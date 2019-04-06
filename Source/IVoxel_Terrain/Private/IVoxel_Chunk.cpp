@@ -218,7 +218,7 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 	if (Data.PolygonizedSections.Num() == 0)
 	{
 		UE_LOG(LogIVoxel, Error, TEXT("PolygonizedData sections num is 0"));
-		ensure(false);
+		ensureAlways(false);
 		return;
 	}
 	check(Data.PolygonizedSections.Num() == IVoxWorld->VoxelMaterials.Num());

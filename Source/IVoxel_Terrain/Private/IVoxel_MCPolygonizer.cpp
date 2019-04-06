@@ -10,8 +10,8 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 {
 	check(ChunkData);
 
-	float isolevel = 0;
-	float VoxelSize = ChunkData->IVoxWorld->GetVoxelSize();
+	const float isolevel = 0;
+	const float VoxelSize = ChunkData->IVoxWorld->GetVoxelSize();
 
 	FVector RealNodePos = FVector(NodePos);
 
@@ -35,12 +35,12 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 		for (int i = 0; i < 8; i++) //Get values to determine casecodes, weights.
 		{
-			FIntVector corn = Transvoxel::Corner[i] + Pos;
+			const FIntVector corn = Transvoxel::Corner[i] + Pos;
 			//FMemory::Memcpy(&ThisData[i], &CachedData[AIVoxel_Chunk::IndexFor(corn)], sizeof(FIVoxel_BlockData)); //Is this faster?
 			ThisData[i] = GetBlockData(corn);
 		}
 
-		uint8 Casecode = 0, t = 1;
+		uint32 Casecode = 0, t = 1;
 		for (int i = 0; i < 8; i++) //Calculate casecodes
 		{
 			if (ThisData[i].Value < isolevel) Casecode |= t;
@@ -49,15 +49,16 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 		if (Casecode != 0 && Casecode != 255)
 		{
-			auto CellClass = Transvoxel::regularCellClass[Casecode];
-			auto Vertexdata = Transvoxel::regularVertexData[Casecode];
-			auto Celldata = Transvoxel::regularCellData[CellClass];
+			const auto CellClass = Transvoxel::regularCellClass[Casecode];
+			const auto Vertexdata = Transvoxel::regularVertexData[Casecode];
+			const auto Celldata = Transvoxel::regularCellData[CellClass];
+
 			int VertexIndex = 0;
 
 			TArray<int> VertexIndices;
 			VertexIndices.SetNumUninitialized(Celldata.GetVertexCount());
 
-			int CurrentSectionIndex = SafeSectionIndex(ThisData[0].BlockType);
+			const int CurrentSectionIndex = SafeSectionIndex(ThisData[0].BlockType);
 			auto& CurrentSection = Result.PolygonizedSections[CurrentSectionIndex];
 
 			for (int i = 0; i < Celldata.GetVertexCount(); i++)
@@ -77,6 +78,8 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 				auto e1 = (Edgecode >> 4) & 0x0F;
 				auto e2 = Edgecode & 0x0F;
+
+				check(e2 > e1);
 
 				FVector v1 = FVector(Pos + Transvoxel::Corner[e1]);
 				FVector v2 = FVector(Pos + Transvoxel::Corner[e2]);
@@ -136,7 +139,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	return true;
 }
 
-inline bool IVoxel_MCPolygonizer::GetCachedVertex(FIntVector Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out)
+inline bool IVoxel_MCPolygonizer::GetCachedVertex(FIntVector& Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out)
 {
 	short ValidityMask = (Pos.X != 0) + 2 * (Pos.Y != 0) + 4 * (Pos.Z != 0);
 	if ((ValidityMask & CacheFlag) == CacheFlag)
@@ -164,7 +167,7 @@ inline int IVoxel_MCPolygonizer::SafeSectionIndex(int Original)
 	return FMath::Clamp(Original, 0, VoxelMaterialMax-1);
 }
 
-inline FVector IVoxel_MCPolygonizer::VertexInterpolate(FVector P1, FVector P2, float D1, float D2)
+inline FVector IVoxel_MCPolygonizer::VertexInterpolate(FVector& P1, FVector& P2, float& D1, float& D2)
 {
 	/*
 	FVector r;
@@ -233,18 +236,23 @@ inline FVector IVoxel_MCPolygonizer::CalculateNormal(FVector P1, FVector P2, FVe
 	return -R;
 }
 
-inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
+inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector& Point)
 {
-	FIntVector IV = FIntVector(Point);
+	FIntVector IV = LocalVertexPosToGlobal(Point);
+
+	const int Step = FOctree::StepEachBlock(Depth);
 
 	const FIntVector UX = FIntVector(1, 0, 0);
 	const FIntVector UY = FIntVector(0, 1, 0);
 	const FIntVector UZ = FIntVector(0, 0, 1);
 
-	FVector Normal = FVector(GetBlockData_Ex(IV + UX).Value - GetBlockData_Ex(IV - UX).Value
-							 , GetBlockData_Ex(IV + UY).Value - GetBlockData_Ex(IV - UY).Value
-							 , GetBlockData_Ex(IV + UZ).Value - GetBlockData_Ex(IV - UZ).Value);
-	return -Normal.GetSafeNormal();
+	FVector Normal = FVector(GetBlockData_Global(IV + UX).Value - GetBlockData_Global(IV - UX).Value
+							 , GetBlockData_Global(IV + UY).Value - GetBlockData_Global(IV - UY).Value
+							 , GetBlockData_Global(IV + UZ).Value - GetBlockData_Global(IV - UZ).Value)
+							.GetSafeNormal();
+
+	ensure(!Normal.IsZero());
+	return -Normal;
 }
 
 inline FIntVector IVoxel_MCPolygonizer::LocalVertexPosToGlobal(FVector Point)

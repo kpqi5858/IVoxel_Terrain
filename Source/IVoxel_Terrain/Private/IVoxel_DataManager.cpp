@@ -64,9 +64,6 @@ FIVoxel_BlockData& FIVoxel_DataManager::RefSingleData(FIntVector Location)
 
 FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location, FOctree*& LastOctree)
 {
-	FRWScopeLock(DataLock, FRWScopeLockType::SLT_ReadOnly);
-
-
 	FIVoxel_BlockData* Pointer = nullptr;
 
 	if (LastOctree && LastOctree->IsInOctree_External(Location))
@@ -95,9 +92,6 @@ FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location, FOctre
 
 FIVoxel_BlockData FIVoxel_DataManager::GetSingleData(FIntVector Location)
 {
-	FRWScopeLock(DataLock, FRWScopeLockType::SLT_ReadOnly);
-
-
 	FIVoxel_BlockData* Pointer = MainDataOctree->SingleData(Location);
 
 	if (Pointer)
