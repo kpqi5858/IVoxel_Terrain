@@ -13,7 +13,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	const float isolevel = 0;
 	const float VoxelSize = ChunkData->IVoxWorld->GetVoxelSize();
 
-	FVector RealNodePos = FVector(NodePos);
+	FIntVector RealNodePos = FOctree::GetMinimalPosition(NodePos, Depth);
 
 	ChunkData->DataOctree->Begin(FRWScopeLockType::SLT_ReadOnly);
 
@@ -31,7 +31,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	for (int y = 0; y < IVOX_CHUNKDATASIZE; y++)
 	for (int z = 0; z < IVOX_CHUNKDATASIZE; z++)
 	{
-		FIntVector Pos = FIntVector(x,y,z);
+		const FIntVector Pos = FIntVector(x,y,z);
 
 		for (int i = 0; i < 8; i++) //Get values to determine casecodes, weights.
 		{
@@ -63,11 +63,11 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 			for (int i = 0; i < Celldata.GetVertexCount(); i++)
 			{
-				auto Edgecode = Vertexdata[i];
+				const auto Edgecode = Vertexdata[i];
 
-				auto CacheFlag = Edgecode >> 12;
+				const auto CacheFlag = Edgecode >> 12;
 
-				auto EdgeIndex = ((Edgecode >> 8) & 0x0F)-1;
+				const auto EdgeIndex = ((Edgecode >> 8) & 0x0F)-1;
 
 				
 				if (GetCachedVertex(Pos, CacheFlag, ThisData[0].BlockType, EdgeIndex, VertexIndex))
@@ -76,8 +76,8 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 					continue;
 				}
 
-				auto e1 = (Edgecode >> 4) & 0x0F;
-				auto e2 = Edgecode & 0x0F;
+				const auto e1 = (Edgecode >> 4) & 0x0F;
+				const auto e2 = Edgecode & 0x0F;
 
 				check(e2 > e1);
 
@@ -100,7 +100,9 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 
 				CurrentSection.Normal.Add(CalculateGradient(Intersect));
 
-				FVector2D UVs = FVector2D(RealNodePos.X + Intersect.X, RealNodePos.Y + Intersect.Y);
+				const FVector UVCalcTemp = Intersect * FOctree::StepEachBlock(Depth);
+
+				const FVector2D UVs = FVector2D(RealNodePos.X + UVCalcTemp.X, RealNodePos.Y + UVCalcTemp.Y);
 
 				CurrentSection.Vertex.Add(Intersect * VoxelSize);
 				CurrentSection.UV.Add(UVs);
@@ -139,7 +141,7 @@ bool IVoxel_MCPolygonizer::Polygonize(IVoxel_PolygonizedData& Result)
 	return true;
 }
 
-inline bool IVoxel_MCPolygonizer::GetCachedVertex(FIntVector& Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out)
+inline bool IVoxel_MCPolygonizer::GetCachedVertex(FIntVector Pos, uint16 CacheFlag, uint16 BlockType, int EdgeIndex, int& Out)
 {
 	short ValidityMask = (Pos.X != 0) + 2 * (Pos.Y != 0) + 4 * (Pos.Z != 0);
 	if ((ValidityMask & CacheFlag) == CacheFlag)
@@ -236,7 +238,7 @@ inline FVector IVoxel_MCPolygonizer::CalculateNormal(FVector P1, FVector P2, FVe
 	return -R;
 }
 
-inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector& Point)
+inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
 {
 	FIntVector IV = LocalVertexPosToGlobal(Point);
 

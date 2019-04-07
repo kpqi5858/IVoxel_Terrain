@@ -11,8 +11,7 @@ class IVOXEL_TERRAIN_API UIVoxel_WorldGenerator : public UObject
 {
 	GENERATED_BODY()
 public:
-	//Decreasing WorldGenScale drastically makes smoother terrain
-	//Should get two sample and return middle data?
+	//Decreasing WorldGenScale drastically makes smoother terrain (If it uses noise)
 	float WorldGenScale = 1;
 
 	FIVoxel_BlockData GetBlockData(float x, float y, float z)
@@ -30,7 +29,15 @@ public:
 	}
 
 	//This function is called when AIVoxel_TerrainWorld initializes world generator
-	virtual void ConstructionScript() { };
+	//Will call ConstructionScriptBP default if not overridden
+	virtual void ConstructionScript()
+	{ 
+		ConstructionScriptBP();
+	};
+
+	//Construction script
+	UFUNCTION(BlueprintImplementableEvent)
+	void ConstructionScriptBP();
 
 };
 
@@ -40,16 +47,6 @@ class IVOXEL_TERRAIN_API UIVoxel_BPWorldGenerator : public UIVoxel_WorldGenerato
 	GENERATED_BODY()
 public:
 	bool HasPrintedUnimplementedError = false;
-
-	//Construction script
-	UFUNCTION(BlueprintImplementableEvent)
-	void ConstructionScriptBP();
-
-	//Implementation
-	virtual void ConstructionScript() override
-	{
-		ConstructionScriptBP();
-	}
 
 	//Override this function in Blueprint
 	UFUNCTION(BlueprintNativeEvent)
@@ -96,7 +93,7 @@ public:
 	}
 };
 
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, abstract)
 class IVOXEL_TERRAIN_API UIVoxel_UFNWorldGenerator : public UIVoxel_WorldGenerator
 {
 	GENERATED_BODY()

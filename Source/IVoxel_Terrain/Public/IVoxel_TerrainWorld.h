@@ -46,7 +46,7 @@ public:
 	int UpdatePerTicks = 30;
 
 	UPROPERTY(EditAnywhere)
-	UCurveFloat* LodCurve;
+	bool bEnableUV;
 
 	UPROPERTY(EditAnywhere)
 	int ThreadCount = 2;
@@ -68,7 +68,6 @@ public:
 
 	IVoxel_TerrainManager* Manager;
 
-	bool TickFlag = false;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -83,7 +82,4 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	void RegisterInvoker(AActor* Actor);
-
-	UFUNCTION(BlueprintCallable)
-	void DoLodTick();
 };

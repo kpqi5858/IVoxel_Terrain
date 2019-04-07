@@ -224,6 +224,7 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 	check(Data.PolygonizedSections.Num() == IVoxWorld->VoxelMaterials.Num());
 
 	bool ShouldCreateCollision = RMC->NodeDepth <= IVoxWorld->CollisionMaxDepth;
+	bool EnableUV = IVoxWorld->bEnableUV;
 
 	for (int index = 0; index < Data.PolygonizedSections.Num(); index++)
 	{
@@ -234,7 +235,7 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 		}
 		else
 		{
-			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, /*Section.Tangent*/TArray<FRuntimeMeshTangent>(), ShouldCreateCollision);
+			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, EnableUV ? Section.UV : TArray<FVector2D>(), Section.Color, /*Section.Tangent*/TArray<FRuntimeMeshTangent>(), ShouldCreateCollision);
 		}
 	}
 }
@@ -374,14 +375,13 @@ void AIVoxel_Chunk::EditWorldTest(FVector Position, float Radius, bool bCreate)
 
 uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 {
-	auto Curve = IVoxWorld->LodCurve;
 	int MaxDepth = Manager->OctreeDepthInit;
 
 	FVector Pos = FVector(Node->Position) * Manager->VoxelSizeInit + GetActorLocation() / IVOX_CHUNKDATASIZE;
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.7), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.8), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

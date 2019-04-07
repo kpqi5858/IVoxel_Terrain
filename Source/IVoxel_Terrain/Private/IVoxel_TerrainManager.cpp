@@ -33,25 +33,22 @@ void IVoxel_TerrainManager::CreateStartChunks()
 void IVoxel_TerrainManager::Tick()
 {
 	InternalTickCount++;
-	if (World->TickFlag)
+
+	TSet<FVector> InvokersLoc;
+
+	TSet<TWeakObjectPtr<AActor>> InvalidInvokers;
+
+	for (auto& Invoker : InvokersList)
 	{
-		World->TickFlag = false;
-		TSet<FVector> InvokersLoc;
-
-		TSet<TWeakObjectPtr<AActor>> InvalidInvokers;
-
-		for (auto& Invoker : InvokersList)
+		if (!Invoker.IsValid())
 		{
-			if (!Invoker.IsValid())
-			{
-				InvalidInvokers.Add(Invoker);
-				continue;
-			}
+			InvalidInvokers.Add(Invoker);
+			continue;
 		}
-		for (auto& IIV : InvalidInvokers)
-		{
-			InvokersList.Remove(IIV);
-		}
+	}
+	for (auto& IIV : InvalidInvokers)
+	{
+		InvokersList.Remove(IIV);
 	}
 }
 

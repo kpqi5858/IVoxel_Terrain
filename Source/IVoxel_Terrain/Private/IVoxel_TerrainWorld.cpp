@@ -64,8 +64,3 @@ void AIVoxel_TerrainWorld::RegisterInvoker(AActor* Actor)
 	check(Manager);
 	Manager->RegisterInvoker(Actor);
 }
-
-void AIVoxel_TerrainWorld::DoLodTick()
-{
-	TickFlag = true;
-}
