@@ -240,9 +240,7 @@ inline FVector IVoxel_MCPolygonizer::CalculateNormal(FVector P1, FVector P2, FVe
 
 inline FVector IVoxel_MCPolygonizer::CalculateGradient(FVector Point)
 {
-	FIntVector IV = LocalVertexPosToGlobal(Point);
-
-	const int Step = FOctree::StepEachBlock(Depth);
+	const FIntVector IV = LocalVertexPosToGlobal(Point);
 
 	const FIntVector UX = FIntVector(1, 0, 0);
 	const FIntVector UY = FIntVector(0, 1, 0);

@@ -223,19 +223,28 @@ inline void AIVoxel_Chunk::ApplyPolygonized(UIVoxelNodeChunk* RMC, IVoxel_Polygo
 	}
 	check(Data.PolygonizedSections.Num() == IVoxWorld->VoxelMaterials.Num());
 
-	bool ShouldCreateCollision = RMC->NodeDepth <= IVoxWorld->CollisionMaxDepth;
-	bool EnableUV = IVoxWorld->bEnableUV;
+	const bool ShouldCreateCollision = RMC->NodeDepth <= IVoxWorld->CollisionMaxDepth;
+	const bool EnableUV = IVoxWorld->bEnableUV;
+	const bool MatchesEnableTessellationCond = IVoxWorld->bEnableTessellation;
 
 	for (int index = 0; index < Data.PolygonizedSections.Num(); index++)
 	{
 		auto& Section = Data.PolygonizedSections[index];
+
+		ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None;
+
+		if (MatchesEnableTessellationCond)
+		{
+			UpdateFlags |= ESectionUpdateFlags::CalculateTessellationIndices;
+		}
+
 		if (Section.Vertex.Num() && false)
 		{
 			RMC->UpdateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, TArray<FVector2D>(), Section.Color, TArray<FRuntimeMeshTangent>());
 		}
 		else
 		{
-			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, EnableUV ? Section.UV : TArray<FVector2D>(), Section.Color, /*Section.Tangent*/TArray<FRuntimeMeshTangent>(), ShouldCreateCollision);
+			RMC->CreateMeshSection(index, Section.Vertex, Section.Triangle, Section.Normal, EnableUV ? Section.UV : TArray<FVector2D>(), Section.Color, /*Section.Tangent*/TArray<FRuntimeMeshTangent>(), ShouldCreateCollision, EUpdateFrequency::Average, UpdateFlags);
 		}
 	}
 }
@@ -313,7 +322,7 @@ void AIVoxel_Chunk::QueueUnload(UIVoxelNodeChunk* Chunk)
 void AIVoxel_Chunk::UnloadRMC(UIVoxelNodeChunk* Chunk)
 {
 	check(!FreeLeaves.Contains(Chunk));
-	check(!Chunk->PolygonizerThread);
+	checkf(!Chunk->PolygonizerThread, TEXT("%s : UnloadRMC called but there's polygonizer job remaining"), *Chunk->GetName());
 	Chunk->ClearAllMeshSections();
 	FreeLeaves.Add(Chunk);
 }
@@ -381,7 +390,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.8), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.82), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

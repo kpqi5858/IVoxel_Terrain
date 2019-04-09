@@ -31,7 +31,7 @@ public:
 	float VoxelSize = 80;
 
 	UPROPERTY(EditAnywhere)
-	TArray<UMaterial*> VoxelMaterials;
+	TArray<UMaterialInterface*> VoxelMaterials;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UIVoxel_WorldGenerator> WorldGenerator;
@@ -57,6 +57,9 @@ public:
 	UPROPERTY(EditAnywhere)
 	int CollisionMaxDepth = 3;
 	
+	UPROPERTY(EditAnywhere)
+	bool bEnableTessellation = false;
+
 	UPROPERTY(EditAnywhere)
 	float DeletionDelay = 1;
 
