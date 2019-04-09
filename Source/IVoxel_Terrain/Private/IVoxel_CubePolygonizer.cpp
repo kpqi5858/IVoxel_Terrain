@@ -1,7 +1,7 @@
 #include "IVoxel_CubePolygonizer.h"
 
 IVoxel_CubePolygonizer::IVoxel_CubePolygonizer(AIVoxel_Chunk* Chunk, FIntVector NodePos, uint8 NodeDepth)
-	: Chunk(Chunk), NodePos(NodePos), Depth(NodeDepth)
+	: NodePos(NodePos), Depth(NodeDepth), Chunk(Chunk)
 {
 	VoxelMaterialMax = Chunk->IVoxWorld->VoxelMaterials.Num();
 }

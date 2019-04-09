@@ -1,7 +1,8 @@
 #include "Octree.h"
 
 FOctree::FOctree(FIntVector Position, uint8 Depth, FOctree* Mother)
-	: Depth(Depth), Position(Position), HasChilds(false), Data(FOctreeData()), IsFake(false), Mother(Mother)
+//	: Depth(Depth), Position(Position), HasChilds(false), Data(FOctreeData()), IsFake(false), Mother(Mother)
+	: Data(FOctreeData()), Mother(Mother), HasChilds(false), Depth(Depth), Position(Position), IsFake(false)
 {
 
 }

@@ -36,10 +36,10 @@ class IVOXEL_TERRAIN_API IVoxel_CubePolygonizer : public IVoxel_Polygonizer
 private:
 	int VoxelMaterialMax; //Cached
 
-	FIntVector NodePos;
-	uint8 Depth;
+	const FIntVector NodePos;
+	const uint8 Depth;
 
-	AIVoxel_Chunk* Chunk;
+	const AIVoxel_Chunk* Chunk;
 
 	FIVoxel_BlockData* CachedData;
 	FIVoxel_BlockData* ExtendedCachedData; //For gradient normals, etc

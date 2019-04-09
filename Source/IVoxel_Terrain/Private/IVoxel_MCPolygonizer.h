@@ -43,10 +43,10 @@ public:
 	virtual ~IVoxel_MCPolygonizer() {}
 	IVoxel_MCPolygonizer(AIVoxel_Chunk* Chunk, FIntVector NodePos, uint8 NodeDepth);
 
-	FIntVector NodePos;
-	uint8 Depth;
+	const FIntVector NodePos;
+	const uint8 Depth;
 
-	AIVoxel_Chunk* ChunkData;
+	const AIVoxel_Chunk* ChunkData;
 
 	FOctree* LastOctree = nullptr;
 

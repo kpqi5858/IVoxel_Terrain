@@ -1,7 +1,7 @@
 #include "IVoxel_MCPolygonizer.h"
 
 IVoxel_MCPolygonizer::IVoxel_MCPolygonizer(AIVoxel_Chunk* Chunk, FIntVector NodePos, uint8 NodeDepth)
-	: ChunkData(Chunk), NodePos(NodePos), Depth(NodeDepth)
+	: NodePos(NodePos), Depth(NodeDepth), ChunkData(Chunk)
 {
 	VoxelMaterialMax = ChunkData->IVoxWorld->VoxelMaterials.Num();
 }

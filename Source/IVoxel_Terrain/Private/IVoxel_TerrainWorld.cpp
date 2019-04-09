@@ -5,8 +5,6 @@
 
 // Sets default values
 AIVoxel_TerrainWorld::AIVoxel_TerrainWorld()
-	: KeepChunkRadius(5)
-	, VoxelSize(75)
 {
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	RootComponent = RootComp;

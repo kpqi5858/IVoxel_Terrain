@@ -7,7 +7,8 @@ FOctree::FOctree()
 }
 
 FOctree::FOctree(FIntVector Position, uint8 Depth, FOctree* Parent)
-	: Depth(Depth), Position(Position), HasChilds(false), Data(nullptr), Parent(Parent), IsEditedLastLODMake(true)
+  //: Depth(Depth), Position(Position), HasChilds(false), Data(nullptr), Parent(Parent), IsEditedLastLODMake(true)
+	: Parent(Parent), HasChilds(false), IsEditedLastLODMake(true), Depth(Depth), Position(Position), Data(nullptr)
 {
 	check(Depth < 28); //Size() max
 }

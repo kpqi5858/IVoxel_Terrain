@@ -1,7 +1,7 @@
 #include "IVoxel_DataManager.h"
 
 FIVoxel_DataManager::FIVoxel_DataManager(AIVoxel_Chunk* Chunk)
-	: Chunk(Chunk), MainDataOctree(new FOctree(FIntVector(0), Chunk->Manager->OctreeDepthInit, nullptr))
+	: MainDataOctree(new FOctree(FIntVector(0), Chunk->Manager->OctreeDepthInit, nullptr)), Chunk(Chunk)
 {
 }
 

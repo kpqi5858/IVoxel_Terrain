@@ -37,7 +37,7 @@ public:
 	TSubclassOf<UIVoxel_WorldGenerator> WorldGenerator;
 
 	UPROPERTY(EditAnywhere)
-	int KeepChunkRadius;
+	int KeepChunkRadius = 1;
 
 	UPROPERTY(EditAnywhere)
 	int OctreeSize = 8;

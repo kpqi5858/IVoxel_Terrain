@@ -1,10 +1,11 @@
 #include "IVoxel_TerrainManager.h"
 
 IVoxel_TerrainManager::IVoxel_TerrainManager(AIVoxel_TerrainWorld* world) 
-	: World(world)
-	, MesherThreadPool(FQueuedThreadPool::Allocate())
-	, OctreeDepthInit(world->OctreeSize)
+	: OctreeDepthInit(world->OctreeSize)
 	, VoxelSizeInit(world->GetVoxelSize())
+	, World(world)
+	, MesherThreadPool(FQueuedThreadPool::Allocate())
+
 {
 	MesherThreadPool->Create(world->ThreadCount, 1024*1024);
 }
@@ -155,14 +156,14 @@ bool IVoxel_TerrainManager::IsTooFarFromInvokers(FIntVector ChunkPos)
 	FVector ChunkPosV(ChunkPos);
 
 	if (!InvokersList.Num()) return false;
-	int LoadBox = World->KeepChunkRadius;
+	int LoadBoxRange = World->KeepChunkRadius;
 
 	for (auto& Invoker : InvokersList)
 	{
 		if (Invoker.IsValid())
 		{
 			FVector ActorIndexLoc = FVector(WorldLocationToChunkIndex(Invoker->GetActorLocation()));
-			FBox LoadBox(ActorIndexLoc - FVector(LoadBox), ActorIndexLoc + FVector(LoadBox));
+			FBox LoadBox(ActorIndexLoc - FVector(LoadBoxRange), ActorIndexLoc + FVector(LoadBoxRange));
 			if (LoadBox.IsInsideOrOn(ChunkPosV)) return false;
 		}
 	}
