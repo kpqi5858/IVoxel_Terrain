@@ -2,11 +2,13 @@
 
 void UIVoxelNodeChunk::Load(FIntVector Pos, uint8 Depth)
 {
+	check(!PolygonizerThread);
+	check(!IsPolygonizeDone);
 	NodePos = Pos;
 	NodeDepth = Depth;
 	IsPolygonizeDone = false;
 	HasMesh = false;
-	IgnoreMesh = false;
+	IsLoaded = true;
 	DeletionLeft = 0.f;
 }
 void UIVoxelNodeChunk::Unload()
@@ -23,6 +25,7 @@ void UIVoxelNodeChunk::Unload()
 	DecreaseOCReset();
 	IsPolygonizeDone = false;
 	HasMesh = false;
+	IsLoaded = false;
 }
 
 void UIVoxelNodeChunk::Setup(AIVoxel_Chunk* ParentChunk)
@@ -66,4 +69,21 @@ void UIVoxelNodeChunk::DecreaseOC()
 	{
 		Chunk->QueueUnload(this);
 	}
+}
+
+void UIVoxelNodeChunk::SetPolygonizerThread(IVoxel_PolygonizerThread* InThread)
+{
+	if (IsLoaded)
+	{
+		PolygonizerThread = InThread;
+	}
+	else
+	{
+		//Do not handle
+	}
+}
+
+bool UIVoxelNodeChunk::HasPolygonizerThread()
+{
+	return PolygonizerThread != nullptr;
 }

@@ -54,6 +54,7 @@ public:
 	void Destroy();
 
 	float GetMinDistanceToInvokers(FVector Pos);
+	float GetMinDistanceToInvokers_Box(FBox& Box);
 
 	TSharedPtr<IVoxel_Polygonizer> GetPolygonizer(AIVoxel_Chunk* Chunk, FOctree* Node);
 	TSharedPtr<IVoxel_Polygonizer> GetPolygonizer(AIVoxel_Chunk* Chunk, FIntVector ExactPos, uint8 Depth);

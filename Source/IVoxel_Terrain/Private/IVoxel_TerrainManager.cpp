@@ -150,6 +150,25 @@ float IVoxel_TerrainManager::GetMinDistanceToInvokers(FVector Pos)
 	return Ret;
 }
 
+float IVoxel_TerrainManager::GetMinDistanceToInvokers_Box(FBox& Box)
+{
+	float Ret = FLT_MAX;
+	FVector Center = Box.GetCenter();
+
+	for (auto& Invoker : InvokersList)
+	{
+		if (Invoker.IsValid())
+		{
+			float Dist = FMath::Min(Box.ComputeSquaredDistanceToPoint(Invoker->GetActorLocation()), (Invoker->GetActorLocation() - Center).Size());
+
+
+			Ret = FMath::Min(Dist, Ret);
+		}
+	}
+
+	return Ret;
+}
+
 bool IVoxel_TerrainManager::IsTooFarFromInvokers(FIntVector ChunkPos)
 {
 	return false;

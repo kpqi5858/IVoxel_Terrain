@@ -49,15 +49,6 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 {
 	InternalTicks++;
 
-	//Chunk Tick
-	{
-		FScopeLock Lock(&TickListLock);
-		for (auto& Chunk : TickList)
-		{
-			Chunk->ChunkTick();
-		}
-	}
-
 	GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::White, TEXT("Polygonizer threads : " + FString::FromInt(DoingThreadedJob.GetValue())));
 
 	TSet<UIVoxelNodeChunk*> ToDelete;
@@ -76,32 +67,52 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 		QueuedUnload.Remove(Chunk);
 	}
 
+
 	//if (DoingThreadedJob.GetValue()) return; //Don't update if thread is running
+
+	TSet<UIVoxelNodeChunk*> Ignored;
+
+	for (auto& Cho : ToUpdate)
+	{
+		auto Ch = Cho;
+
+		if (!Ch->IsLoaded)
+		{
+			continue;
+		}
+
+		if (Ch->HasPolygonizerThread())
+		{
+			Ignored.Add(Ch);
+			continue;
+		}
+
+		auto Polygonizer = Manager->GetPolygonizer(this, Ch->NodePos, Ch->NodeDepth);
+		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, Ch->NodePos, Polygonizer); //Will automatically deleted
+
+		Ch->SetPolygonizerThread(PolygonizerThread);
+		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
+	}
+
+	ToUpdate.Reset();
+	ToUpdate.Append(Ignored);
+
+	//Chunk Tick
+	{
+		FScopeLock Lock(&TickListLock);
+		for (auto& Chunk : TickList)
+		{
+			Chunk->ChunkTick();
+		}
+
+	}
 
 	int Rate = IVoxWorld->UpdatePerTicks;
 	if (Rate == 0) Rate = 1;
 
 	if (InternalTicks % Rate == 0) RenderOctreeTick();
 
-	TSet<UIVoxelNodeChunk*> Ignored;
 
-	for (auto& Ch : ToUpdate)
-	{
-		if (Ch->PolygonizerThread)
-		{
-			Ignored.Add(Ch);
-			continue;
-		}
-		auto Polygonizer = Manager->GetPolygonizer(this, Ch->NodePos, Ch->NodeDepth);
-		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, Ch->NodePos, Polygonizer); //Will automatically deleted
-
-		//checkf(!Ch->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
-		Ch->PolygonizerThread = PolygonizerThread;
-		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
-	}
-
-	ToUpdate.Reset();
-	ToUpdate.Append(Ignored);
 }
 
 void AIVoxel_Chunk::RenderOctreeTick()
@@ -198,8 +209,10 @@ void AIVoxel_Chunk::RenderOctreeTick()
 
 		auto Polygonizer = Manager->GetPolygonizer(this, Node);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, CLoc, Polygonizer); //Will automatically deleted
-		checkf(!Comp->PolygonizerThread, TEXT("Two or more threads towarding same node chunks."));
-		Comp->PolygonizerThread = PolygonizerThread;
+
+		check(!Comp->HasPolygonizerThread());
+
+		Comp->SetPolygonizerThread(PolygonizerThread);
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
 	}
 
@@ -322,7 +335,8 @@ void AIVoxel_Chunk::QueueUnload(UIVoxelNodeChunk* Chunk)
 void AIVoxel_Chunk::UnloadRMC(UIVoxelNodeChunk* Chunk)
 {
 	check(!FreeLeaves.Contains(Chunk));
-	checkf(!Chunk->PolygonizerThread, TEXT("%s : UnloadRMC called but there's polygonizer job remaining"), *Chunk->GetName());
+	//check(!Chunk->HasPolygonizerThread());
+
 	Chunk->ClearAllMeshSections();
 	FreeLeaves.Add(Chunk);
 }
@@ -386,11 +400,15 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 {
 	int MaxDepth = Manager->OctreeDepthInit;
 
-	FVector Pos = FVector(Node->Position) * Manager->VoxelSizeInit + GetActorLocation() / IVOX_CHUNKDATASIZE;
-	float Dist = Manager->GetMinDistanceToInvokers(Pos) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
+	FVector MinPos = FVector(Node->GetMinimalPosition()) * Manager->VoxelSizeInit + GetActorLocation() / IVOX_CHUNKDATASIZE;
+	FVector MaxPos = FVector(Node->GetMaximumPosition()) * Manager->VoxelSizeInit + GetActorLocation() / IVOX_CHUNKDATASIZE;
+	FBox OctreeBox = FBox(MinPos, MaxPos);
+
+	float Dist = Manager->GetMinDistanceToInvokers_Box(OctreeBox) / Manager->VoxelSizeInit / IVOX_CHUNKDATASIZE;
+
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(float(FMath::Log2(Dist)) - 0.82), 0, 32);
+	return FMath::Clamp(FMath::FloorToInt(FMath::Log2(Dist) - 0.5), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

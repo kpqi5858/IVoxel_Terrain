@@ -31,7 +31,6 @@ void IVoxel_PolygonizerThread::DoThreadedWork()
 	}
 	
 	Comp->IsPolygonizeDone = true;
-
 	delete this;
 }
 

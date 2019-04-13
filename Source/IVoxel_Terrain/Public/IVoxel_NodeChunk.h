@@ -12,18 +12,20 @@ UCLASS()
 class IVOXEL_TERRAIN_API UIVoxelNodeChunk : public URuntimeMeshComponent
 {
 	GENERATED_BODY()
-public:
+
+private:
 	AIVoxel_Chunk* Chunk;
 
 	IVoxel_PolygonizerThread* PolygonizerThread = nullptr;
 
+public:
 	IVoxel_PolygonizedData PolygonizedData;
 
 	FThreadSafeBool IsPolygonizeDone = false; //Needs to be thread-safe
 
 	bool HasMesh = false;
 
-	bool IgnoreMesh = false;
+	bool IsLoaded = false;
 
 	float DeletionLeft = 0;
 
@@ -47,4 +49,10 @@ public:
 
 	void IncreaseOC();
 	void DecreaseOC();
+
+
+	void SetPolygonizerThread(IVoxel_PolygonizerThread* InThread);
+
+	//Asserts if there's polygonizer remaining
+	bool HasPolygonizerThread();
 };
