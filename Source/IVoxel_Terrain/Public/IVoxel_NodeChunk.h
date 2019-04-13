@@ -19,7 +19,7 @@ private:
 	IVoxel_PolygonizerThread* PolygonizerThread = nullptr;
 
 public:
-	IVoxel_PolygonizedData PolygonizedData;
+	IVoxel_PolygonizedData* PolygonizedData = nullptr;
 
 	FThreadSafeBool IsPolygonizeDone = false; //Needs to be thread-safe
 
@@ -55,4 +55,7 @@ public:
 
 	//Asserts if there's polygonizer remaining
 	bool HasPolygonizerThread();
+
+	//Try to set PolygonizedData if thread is valid to this chunk
+	void SetPolygonizedData(IVoxel_PolygonizerThread* ThisThread, IVoxel_PolygonizedData* PData);
 };

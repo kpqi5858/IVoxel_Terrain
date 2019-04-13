@@ -67,6 +67,10 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 		QueuedUnload.Remove(Chunk);
 	}
 
+	int Rate = IVoxWorld->UpdatePerTicks;
+	if (Rate == 0) Rate = 1;
+
+	if (InternalTicks % Rate == 0) RenderOctreeTick();
 
 	//if (DoingThreadedJob.GetValue()) return; //Don't update if thread is running
 
@@ -83,7 +87,6 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 
 		if (Ch->HasPolygonizerThread())
 		{
-			Ignored.Add(Ch);
 			continue;
 		}
 
@@ -106,12 +109,6 @@ void AIVoxel_Chunk::Tick(float DeltaTime)
 		}
 
 	}
-
-	int Rate = IVoxWorld->UpdatePerTicks;
-	if (Rate == 0) Rate = 1;
-
-	if (InternalTicks % Rate == 0) RenderOctreeTick();
-
 
 }
 
@@ -145,7 +142,7 @@ void AIVoxel_Chunk::RenderOctreeTick()
 	auto NodesToCreate = NewOctreeLocs.Difference(OldOctreeLocs);
 	auto NodesToDelete = OldOctreeLocs.Difference(NewOctreeLocs);
 
-	UE_LOG(LogIVoxel, Error, TEXT("Created %d Deleted %d"), NodesToCreate.Num(), NodesToDelete.Num());
+	//UE_LOG(LogIVoxel, Error, TEXT("Created %d Deleted %d"), NodesToCreate.Num(), NodesToDelete.Num());
 	
 	if (NodesToCreate.Num() > 10000)
 	{
@@ -205,12 +202,10 @@ void AIVoxel_Chunk::RenderOctreeTick()
 		}
 
 		Comp->SetRelativeLocation(FVector(Node->GetMinimalPosition()) * Manager->VoxelSizeInit);
-		Comp->SetWorldScale3D(FVector(Node->Size() / IVOX_CHUNKDATASIZE)); //Is this causes lag?
+		Comp->SetWorldScale3D(FVector(Node->Size() / IVOX_CHUNKDATASIZE));
 
 		auto Polygonizer = Manager->GetPolygonizer(this, Node);
 		auto PolygonizerThread = new IVoxel_PolygonizerThread(this, CLoc, Polygonizer); //Will automatically deleted
-
-		check(!Comp->HasPolygonizerThread());
 
 		Comp->SetPolygonizerThread(PolygonizerThread);
 		Manager->MesherThreadPool->AddQueuedWork(PolygonizerThread);
@@ -335,7 +330,6 @@ void AIVoxel_Chunk::QueueUnload(UIVoxelNodeChunk* Chunk)
 void AIVoxel_Chunk::UnloadRMC(UIVoxelNodeChunk* Chunk)
 {
 	check(!FreeLeaves.Contains(Chunk));
-	//check(!Chunk->HasPolygonizerThread());
 
 	Chunk->ClearAllMeshSections();
 	FreeLeaves.Add(Chunk);
@@ -408,7 +402,7 @@ uint8 AIVoxel_Chunk::GetLodFor(FOctree* Node)
 
 	Dist = FMath::Max(1.0f, Dist);
 
-	return FMath::Clamp(FMath::FloorToInt(FMath::Log2(Dist) - 0.5), 0, 32);
+	return FMath::Clamp(FMath::RoundToInt(FMath::Log2(Dist) - 1), 0, 32);
 }
 
 inline FIntVector AIVoxel_Chunk::AsLocation(int num)

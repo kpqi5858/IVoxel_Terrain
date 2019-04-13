@@ -2,8 +2,6 @@
 
 void UIVoxelNodeChunk::Load(FIntVector Pos, uint8 Depth)
 {
-	check(!PolygonizerThread);
-	check(!IsPolygonizeDone);
 	NodePos = Pos;
 	NodeDepth = Depth;
 	IsPolygonizeDone = false;
@@ -37,12 +35,19 @@ void UIVoxelNodeChunk::ChunkTick()
 {
 	if (IsPolygonizeDone)
 	{
+		check(PolygonizedData);
+
 		IsPolygonizeDone = false;
-		Chunk->ApplyPolygonized(this, PolygonizedData);
+
+		Chunk->ApplyPolygonized(this, *PolygonizedData);
+		delete PolygonizedData;
+		PolygonizedData = nullptr;
+
 		HasMesh = true;
+
 		PolygonizerThread = nullptr;
+
 		DecreaseOCReset();
-		Chunk->DoingThreadedJob.Decrement();
 	}
 }
 
@@ -86,4 +91,13 @@ void UIVoxelNodeChunk::SetPolygonizerThread(IVoxel_PolygonizerThread* InThread)
 bool UIVoxelNodeChunk::HasPolygonizerThread()
 {
 	return PolygonizerThread != nullptr;
+}
+
+void UIVoxelNodeChunk::SetPolygonizedData(IVoxel_PolygonizerThread* ThisThread, IVoxel_PolygonizedData* PData)
+{
+	if ((PolygonizerThread && PolygonizerThread->ThreadUniqueID == ThisThread->ThreadUniqueID) || (!PolygonizerThread))
+	{
+		PolygonizedData = PData;
+		IsPolygonizeDone = true;
+	}
 }

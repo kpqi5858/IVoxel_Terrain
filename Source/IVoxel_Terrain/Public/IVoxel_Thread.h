@@ -19,6 +19,8 @@ public:
 	TSharedPtr<IVoxel_Polygonizer> Polygonizer;
 	FIntVector ChunkPos;
 
+	uint64 ThreadUniqueID;
+
 	void DoThreadedWork() override;
 	void Abandon() override;
 };

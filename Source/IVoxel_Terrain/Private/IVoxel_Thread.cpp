@@ -3,6 +3,10 @@
 IVoxel_PolygonizerThread::IVoxel_PolygonizerThread(AIVoxel_Chunk* Chunk, FIntVector ChunkPos, TSharedPtr<IVoxel_Polygonizer> Polygonizer)
 	: Chunk(Chunk), Polygonizer(Polygonizer), ChunkPos(ChunkPos)
 {
+	static uint64 UniqueID = 0;
+	ThreadUniqueID = UniqueID;
+	UniqueID++;
+
 	Chunk->DoingThreadedJob.Increment();
 }
 
@@ -24,13 +28,16 @@ void IVoxel_PolygonizerThread::DoThreadedWork()
 	}
 	auto Comp = *CompPtr;
 
-	Comp->PolygonizedData = IVoxel_PolygonizedData();
-	if (!Polygonizer->Polygonize(Comp->PolygonizedData))
+	auto PData = new IVoxel_PolygonizedData();
+
+	if (!Polygonizer->Polygonize(*PData))
 	{
 		UE_LOG(LogIVoxel, Error, TEXT("Cannot polygonize thread"));
 	}
-	
-	Comp->IsPolygonizeDone = true;
+
+	Comp->SetPolygonizedData(this, PData);
+
+	Chunk->DoingThreadedJob.Decrement();
 	delete this;
 }
 
