@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.25807.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Engine", "Engine", "{472003F1-84DD-49DF-BD87-B33A5DDE26AC}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Engine", "Engine", "{3E8717FE-8C77-496F-821B-A329E847ED06}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Games", "Games", "{765DFDEE-6B39-4645-953A-43C3D689AE75}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Games", "Games", "{2258BE1B-9D4B-47BD-8210-F26551073B3C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IVoxel_Terrain", "Intermediate\ProjectFiles\IVoxel_Terrain.vcxproj", "{F4398810-9A05-456C-A8F3-4264EB6F858B}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UE4", "Intermediate\ProjectFiles\UE4.vcxproj", "{D289BF63-4E6D-4360-8DAC-5DE4926ABB2B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Visualizers", "Visualizers", "{3096AA5A-76B4-4613-9542-E419D9A1B9DD}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Visualizers", "Visualizers", "{9482351F-D543-40F1-BB78-C72F53DB85DF}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\UE_4.22\Engine\Extras\VisualStudioDebugging\UE4.natvis = ..\..\UE_4.22\Engine\Extras\VisualStudioDebugging\UE4.natvis
 	EndProjectSection
@@ -99,7 +99,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{D289BF63-4E6D-4360-8DAC-5DE4926ABB2B} = {472003F1-84DD-49DF-BD87-B33A5DDE26AC}
-		{F4398810-9A05-456C-A8F3-4264EB6F858B} = {765DFDEE-6B39-4645-953A-43C3D689AE75}
+		{D289BF63-4E6D-4360-8DAC-5DE4926ABB2B} = {3E8717FE-8C77-496F-821B-A329E847ED06}
+		{F4398810-9A05-456C-A8F3-4264EB6F858B} = {2258BE1B-9D4B-47BD-8210-F26551073B3C}
 	EndGlobalSection
 EndGlobal

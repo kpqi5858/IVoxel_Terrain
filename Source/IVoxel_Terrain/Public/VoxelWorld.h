@@ -8,7 +8,7 @@
 
 #include "VoxelWorld.generated.h"
 
-class AVoxelChunk;
+class FVoxelChunk;
 
 UCLASS()
 class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
@@ -21,5 +21,5 @@ public:
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 
 
-	AVoxelChunk* GetChunk(FIntVector Pos);
+	FVoxelChunk* GetChunk(FIntVector Pos);
 };

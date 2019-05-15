@@ -5,7 +5,7 @@
 #include "IVoxel_Terrain.h"
 #include "VoxelData.generated.h"
 
-class AVoxelChunk;
+class FVoxelChunk;
 class AVoxelWorld;
 
 USTRUCT(BlueprintType)
@@ -14,7 +14,7 @@ struct FBlockPos
 	GENERATED_USTRUCT_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite)
-	AVoxelChunk* Chunk;
+	FVoxelChunk* Chunk;
 
 	UPROPERTY(BlueprintReadWrite)
 	FIntVector ChunkLocalPos;
@@ -35,7 +35,7 @@ public:
 		: Chunk(nullptr), ChunkLocalPos(FIntVector(0))
 	{ }
 
-	FBlockPos(AVoxelChunk* mChunk, FIntVector LocalPos)
+	FBlockPos(FVoxelChunk* mChunk, FIntVector LocalPos)
 		: Chunk(mChunk), ChunkLocalPos(LocalPos)
 	{ }
 

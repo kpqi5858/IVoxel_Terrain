@@ -1,39 +1,80 @@
 #include "BlockStateStorage.h"
 
-FBasicBlockStateStorage::FBasicBlockStateStorage()
-{
 
-}
-
-FBasicBlockStateStorage::~FBasicBlockStateStorage()
+template<typename T>
+inline TBasicAbstractBlockStorage<T>::TBasicAbstractBlockStorage()
 {
 }
 
-void FBasicBlockStateStorage::Initialize(AVoxelChunk* Chunk)
+template<typename T>
+inline TBasicAbstractBlockStorage<T>::~TBasicAbstractBlockStorage()
 {
-	TheChunk = Chunk;
-	InternalStorage = new FBlockState[VOX_CHUNKSIZE_ARRAY];
+	if (InternalStorage)
+	{
+		for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
+		{
+			delete InternalStorage[i];
+		}
+		delete[] InternalStorage;
+	}
 }
 
-FBlockState* FBasicBlockStateStorage::operator[](FBlockPos Pos)
+template<typename T>
+void TBasicAbstractBlockStorage<T>::Initialize()
 {
-	return &InternalStorage[Pos.ArrayIndex()];
+	checkf(!InternalStorage, "Storage already initialized");
+
+	InternalStorage = new T*[VOX_CHUNKSIZE_ARRAY];
+	FMemory::Memset(InternalStorage, 0, sizeof(T*)*VOX_CHUNKSIZE_ARRAY);
+
+	for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
+	{
+		InternalStorage[i] = new T;
+	}
 }
 
-void FBasicBlockStateStorage::Lock()
+template<typename T>
+void TBasicAbstractBlockStorage<T>::Initialize(FStorageCustomInitializer CustomInitializer)
+{
+	checkf(!InternalStorage, "Storage already initialized");
+
+	InternalStorage = new T*[VOX_CHUNKSIZE_ARRAY];
+	FMemory::Memset(InternalStorage, 0, sizeof(T*)*VOX_CHUNKSIZE_ARRAY);
+
+	for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
+	{
+		T* Ptr = reinterpret_cast<T*>(CustomInitializer(i));
+		check(Ptr);
+		InternalStorage[i] = Ptr;
+	}
+}
+
+template<typename T>
+T* TBasicAbstractBlockStorage<T>::operator[](int Index)
+{
+	checkf(InternalStorage, "Storage not initialized");
+	checkf(Index >= 0 && Index < VOX_CHUNKSIZE_ARRAY, "Out of index : %d", Index);
+	return InternalStorage[Index];
+}
+
+template<typename T>
+inline void TBasicAbstractBlockStorage<T>::Lock()
 {
 	CriticalSection.Lock();
 }
 
-void FBasicBlockStateStorage::UnLock()
+template<typename T>
+inline void TBasicAbstractBlockStorage<T>::UnLock()
 {
 	CriticalSection.Unlock();
 }
 
-void FBasicBlockStateStorage::Save(FArchive* Archive)
+template<typename T>
+inline void TBasicAbstractBlockStorage<T>::Save(FArchive* Archive)
 {
 }
 
-void FBasicBlockStateStorage::Load(FArchive* Archive)
+template<typename T>
+inline void TBasicAbstractBlockStorage<T>::Load(FArchive* Archive)
 {
 }

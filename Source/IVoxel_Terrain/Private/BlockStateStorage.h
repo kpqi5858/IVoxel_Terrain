@@ -4,19 +4,28 @@
 #include "VoxelData.h"
 #include "BlockState.h"
 
-class FAbstractBlockStateStorage
+//First parameter is the index of array
+//You can get X,Y,Z from it
+//Returned void pointer will be casted to T
+typedef void* FStorageCustomInitializer(int);
+
+template<typename T>
+class TAbstractBlockStorage
 {
 public:
-	FAbstractBlockStateStorage()
+	TAbstractBlockStorage()
 	{
 		checkNoEntry();
 	}
-	virtual ~FAbstractBlockStateStorage();
-public:
-	virtual void Initialize(AVoxelChunk* Chunk);
+	virtual ~TAbstractBlockStorage();
 
-	//Gets BlockState from FBlockPos
-	virtual FBlockState* operator[](FBlockPos Pos);
+public:
+	virtual void Initialize(FStorageCustomInitializer Initializer);
+	//Initializes with default constructor
+	virtual void Initialize();
+
+	//Gets data
+	virtual T* operator[](int Index);
 
 	virtual void Lock();
 	virtual void UnLock();
@@ -25,22 +34,22 @@ public:
 	virtual void Load(FArchive* Archive);
 };
 
-class FBasicBlockStateStorage : public FAbstractBlockStateStorage
+template<typename T>
+class TBasicAbstractBlockStorage : public TAbstractBlockStorage<T>
 {
 private:
 	FCriticalSection CriticalSection;
 
-	FBlockState* InternalStorage;
-
-	AVoxelChunk* TheChunk;
+	T** InternalStorage = nullptr;
 
 public:
-	FBasicBlockStateStorage();
-	virtual ~FBasicBlockStateStorage() override;
+	TBasicAbstractBlockStorage();
+	virtual ~TBasicAbstractBlockStorage() override;
 
-	virtual void Initialize(AVoxelChunk* Chunk) override;
+	virtual void Initialize(FStorageCustomInitializer CustomInitializer);
+	virtual void Initialize();
 
-	virtual FBlockState* operator[](FBlockPos Pos) override;
+	virtual T* operator[](int Index) override;
 
 	virtual void Lock() override;
 	virtual void UnLock() override;
