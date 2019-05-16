@@ -6,7 +6,7 @@
 
 //First parameter is the index of array
 //You can get X,Y,Z from it
-//Returned void pointer will be casted to T
+//Returned void pointer will be casted to T*
 typedef void* FStorageCustomInitializer(int);
 
 template<typename T>
