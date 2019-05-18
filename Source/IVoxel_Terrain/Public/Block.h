@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelData.h"
 
 #include "Block.generated.h"
 
@@ -10,5 +11,6 @@ class UBlock : public UObject
 {
 	GENERATED_BODY()
 public:
-
+	bool IsOpaque();
+	bool IsFaceVisible(EBlockFace Face);
 };

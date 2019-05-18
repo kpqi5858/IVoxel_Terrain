@@ -7,7 +7,7 @@
 //First parameter is the index of array
 //You can get X,Y,Z from it
 //Returned void pointer will be casted to T*
-typedef void* FStorageCustomInitializer(int);
+typedef TFunction<void*(int)> FStorageCustomInitializer;
 
 template<typename T>
 class TAbstractBlockStorage
@@ -25,7 +25,7 @@ public:
 	virtual void Initialize();
 
 	//Gets data
-	virtual T* operator[](int Index);
+	virtual T* Get(int Index);
 
 	virtual void Lock();
 	virtual void UnLock();
@@ -49,7 +49,7 @@ public:
 	virtual void Initialize(FStorageCustomInitializer CustomInitializer);
 	virtual void Initialize();
 
-	virtual T* operator[](int Index) override;
+	virtual T* Get(int Index) override;
 
 	virtual void Lock() override;
 	virtual void UnLock() override;

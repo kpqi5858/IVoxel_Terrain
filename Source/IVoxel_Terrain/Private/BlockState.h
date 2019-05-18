@@ -9,15 +9,25 @@ struct FBlockPos;
 class FBlockState
 {
 public:
-	UBlock* BlockDef;
-	FBlockPos Position;
+	const FBlockPos Position;
 
-	int Data1;
-	int Data2;
-	float Data3;
-	float Data4;
-public:
-	//AIR
+	EBlockFace Facing;
+
+private:
+	UBlock* BlockDef;
+
+private:
 	FBlockState();
+
+public:
+	FBlockState(FBlockPos Pos);
 	FBlockState(UBlock* Block, FBlockPos Pos);
+
+	UBlock* GetBlockDef();
+	void SetBlockDef(UBlock* Block);
+
+	bool IsValid();
+
+	//Is this face actually visible for rendering?
+	bool IsFaceVisible(EBlockFace Face);
 };

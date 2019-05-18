@@ -50,7 +50,7 @@ void TBasicAbstractBlockStorage<T>::Initialize(FStorageCustomInitializer CustomI
 }
 
 template<typename T>
-T* TBasicAbstractBlockStorage<T>::operator[](int Index)
+T* TBasicAbstractBlockStorage<T>::Get(int Index)
 {
 	checkf(InternalStorage, "Storage not initialized");
 	checkf(Index >= 0 && Index < VOX_CHUNKSIZE_ARRAY, "Out of index : %d", Index);

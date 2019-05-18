@@ -5,8 +5,129 @@
 #include "IVoxel_Terrain.h"
 #include "VoxelData.generated.h"
 
-class FVoxelChunk;
+//Structs
+
+class UVoxelChunk;
 class AVoxelWorld;
+
+UENUM(BlueprintType)
+enum class EBlockFace : uint8
+{
+	INVALID, FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM
+};
+
+class FVoxelUtilities
+{
+public:
+	static FIntVector GetFaceOffset(EBlockFace Face)
+	{
+		switch (Face)
+		{
+		case EBlockFace::INVALID :
+		{
+			ensureMsgf(false, "GetFaceOffset called with invalid face");
+			return FIntVector(0);
+		}
+		case EBlockFace::FRONT :
+			return FIntVector(1, 0, 0);
+		case EBlockFace::BACK :
+			return FIntVector(-1, 0, 0);
+		case EBlockFace::LEFT :
+			return FIntVector(0, -1, 0);
+		case EBlockFace::RIGHT :
+			return FIntVector(0, 1, 0);
+		case EBlockFace::TOP :
+			return FIntVector(0, 0, 1);
+		case EBlockFace::BOTTOM :
+			return FIntVector(0, 0, -1);
+		default:
+			check(false);
+			return FIntVector(0);
+		}
+	};
+
+	static FVector GetFaceOffset_Vector(EBlockFace Face)
+	{
+		switch (Face)
+		{
+		case EBlockFace::INVALID:
+		{
+			ensureMsgf(false, "GetFaceOffset called with invalid face");
+			return FVector(0);
+		}
+		case EBlockFace::FRONT:
+			return FVector(1, 0, 0);
+		case EBlockFace::BACK:
+			return FVector(-1, 0, 0);
+		case EBlockFace::LEFT:
+			return FVector(0, -1, 0);
+		case EBlockFace::RIGHT:
+			return FVector(0, 1, 0);
+		case EBlockFace::TOP:
+			return FVector(0, 0, 1);
+		case EBlockFace::BOTTOM:
+			return FVector(0, 0, -1);
+		default:
+			check(false);
+			return FVector(0);
+		}
+	};
+
+	static EBlockFace FaceFromNormal(FVector Normal)
+	{
+		const EBlockFace AllFaces[6] = { EBlockFace::FRONT, EBlockFace::BACK, EBlockFace::LEFT, EBlockFace::RIGHT, EBlockFace::TOP, EBlockFace::BOTTOM };
+
+		Normal.Normalize();
+
+		float MinDist = FLT_MAX;
+		auto BestFace = EBlockFace::INVALID;
+
+		for (auto Face : AllFaces)
+		{
+			float Dist = FVector::Dist(GetFaceOffset_Vector(Face), Normal);
+			if (Dist < MinDist)
+			{
+				BestFace = Face;
+				MinDist = Dist;
+			}
+		}
+
+		return BestFace;
+	};
+
+	static FIntVector PositionFromIndex(int Index)
+	{
+		int OriginalIndex = Index;
+
+		int Z = Index / (VOX_CHUNKSIZE*VOX_CHUNKSIZE);
+		Index -= Z * (VOX_CHUNKSIZE*VOX_CHUNKSIZE);
+		int Y = Index / (VOX_CHUNKSIZE);
+		Index -= Y * (VOX_CHUNKSIZE);
+		int X = Index;
+
+		FIntVector Result = FIntVector(X, Y, Z);
+		check(!VOX_IS_OUTOFLOCALPOS(Result));
+		check(VOX_CHUNK_AI(X, Y, Z) == OriginalIndex);
+		return Result;
+	}
+};
+
+struct FVoxelInvoker
+{
+	TWeakObjectPtr<AActor> Object;
+	bool ShouldRender;
+
+	FVoxelInvoker(AActor* Actor, bool DoRender)
+	{
+		check(Actor->IsValidLowLevel());
+		Object = Actor;
+		ShouldRender = DoRender;
+	}
+	bool IsValid()
+	{
+		return Object.IsValid();
+	}
+};
 
 USTRUCT(BlueprintType)
 struct FBlockPos
@@ -14,15 +135,14 @@ struct FBlockPos
 	GENERATED_USTRUCT_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite)
-	FVoxelChunk* Chunk;
+	UVoxelChunk* Chunk;
 
 	UPROPERTY(BlueprintReadWrite)
 	FIntVector ChunkLocalPos;
 private:
 	inline void ChunkLocalPosValidCheck()
 	{
-		check(ChunkLocalPos.GetMin() >= 0);
-		check(ChunkLocalPos.GetMax() < VOX_CHUNKSIZE);
+		check(!VOX_IS_OUTOFLOCALPOS(ChunkLocalPos));
 	}
 	inline void ValidCheck()
 	{
@@ -35,7 +155,7 @@ public:
 		: Chunk(nullptr), ChunkLocalPos(FIntVector(0))
 	{ }
 
-	FBlockPos(FVoxelChunk* mChunk, FIntVector LocalPos)
+	FBlockPos(UVoxelChunk* mChunk, FIntVector LocalPos)
 		: Chunk(mChunk), ChunkLocalPos(LocalPos)
 	{ }
 

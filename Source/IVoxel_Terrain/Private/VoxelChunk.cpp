@@ -1,52 +1,92 @@
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
 
-FVoxelChunk::FVoxelChunk()
+UVoxelChunk::UVoxelChunk()
 {
 }
 
-void FVoxelChunk::ChunkTick()
+void UVoxelChunk::ChunkTick()
 {
 }
 
-void FVoxelChunk::Initialize()
+void UVoxelChunk::Initialize()
+{
+	BlockStateStorage = MakeShareable(new TBasicAbstractBlockStorage<FBlockState>());
+	BlockStateStorage->Initialize(
+	[&](int Index)
+	{
+		return (void*) new FBlockState(FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index)));
+	});
+}
+
+void UVoxelChunk::InitRender()
 {
 }
 
-void FVoxelChunk::InitRender()
+void UVoxelChunk::DeInitRender()
 {
 }
 
-void FVoxelChunk::DeInitRender()
+void UVoxelChunk::BlockStateStorageLock()
 {
+	BlockStateStorage->Lock();
 }
 
-FBlockState * FVoxelChunk::GetBlockState(FIntVector LocalPos)
+void UVoxelChunk::BlockStateStorageUnlock()
 {
-	return nullptr;
+	BlockStateStorage->UnLock();
 }
 
-AVoxelWorld * FVoxelChunk::GetVoxelWorld()
+FBlockState* UVoxelChunk::GetBlockState(FBlockPos Pos)
 {
-	return nullptr;
+	return BlockStateStorage->Get(Pos.ArrayIndex());
 }
 
-FIntVector FVoxelChunk::GetChunkPosition()
+void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 {
-	return FIntVector();
+	GetBlockState(Pos)->SetBlockDef(Block);
 }
 
-AVoxelChunkRender * FVoxelChunk::GetRender()
+bool UVoxelChunk::ShouldBeTicked()
 {
-	return nullptr;
+	return ChunkState == EChunkState::CS_RenderCreated;
 }
 
-FIntVector FVoxelChunk::LocalToGlobalPosition(FIntVector LocalPos)
+bool UVoxelChunk::ShouldBeDeleted()
 {
-	return FIntVector();
+	//If ChunkState is not CS_WorldGenGenerated and this chunk is out of range, return true
+	return false;
 }
 
-FIntVector FVoxelChunk::GlobalToLocalPosition(FIntVector GlobalPos)
+AVoxelWorld* UVoxelChunk::GetVoxelWorld()
 {
-	return FIntVector();
+	return World;
+}
+
+FIntVector UVoxelChunk::GetChunkPosition()
+{
+	return ChunkPosition;
+}
+
+AVoxelChunkRender* UVoxelChunk::GetRender()
+{
+	return RenderActor;
+}
+
+FIntVector UVoxelChunk::LocalToGlobalPosition(FIntVector LocalPos)
+{
+	check(!VOX_IS_OUTOFLOCALPOS(LocalPos));
+	return GetGlobalPosition_Min() + LocalPos;
+}
+
+FIntVector UVoxelChunk::GlobalToLocalPosition(FIntVector GlobalPos)
+{
+	FIntVector Result = GlobalPos - GetGlobalPosition_Min();
+	check(!VOX_IS_OUTOFLOCALPOS(Result));
+	return Result;
+}
+
+FVector UVoxelChunk::GetWorldPosition()
+{
+	return FVector(GetGlobalPosition_Min()) * World->GetVoxelSize();
 }
