@@ -9,8 +9,13 @@ void UVoxelChunk::ChunkTick()
 {
 }
 
-void UVoxelChunk::Initialize()
+void UVoxelChunk::Initialize(AVoxelWorld* VoxelWorld, FIntVector ChunkIndex)
 {
+	ChunkPosition = ChunkIndex;
+	World = VoxelWorld;
+	WorldGenerator = NewObject<UVoxelWorldGenerator>(this, VoxelWorld->GetWorldGenerator());
+	WorldGenerator->Setup(this);
+
 	BlockStateStorage = MakeShareable(new TBasicAbstractBlockStorage<FBlockState>());
 	BlockStateStorage->Initialize(
 	[&](int Index)
@@ -35,6 +40,16 @@ void UVoxelChunk::BlockStateStorageLock()
 void UVoxelChunk::BlockStateStorageUnlock()
 {
 	BlockStateStorage->UnLock();
+}
+
+void UVoxelChunk::SetChunkState(EChunkState NewState)
+{
+	ChunkState = NewState;
+}
+
+bool UVoxelChunk::IsValidChunk()
+{
+	return ChunkState != EChunkState::CS_Invalid && ChunkState != EChunkState::CS_QueuedDeletion;
 }
 
 FBlockState* UVoxelChunk::GetBlockState(FBlockPos Pos)

@@ -4,44 +4,66 @@
 
 #include "WorldGenerator.generated.h"
 
-typedef TFunction<void(FBlockState*)> FWorldGenBlockFunction;
+typedef TFunction<void(FBlockState*)> FWorldGenBlockOperation;
 
 UCLASS(Abstract)
 class UVoxelWorldGenerator : public UObject
 {
 	GENERATED_BODY()
 public:
+	UVoxelChunk* OwnerChunk;
+	TSet<UVoxelChunk*> TouchedChunks;
+
+public:
 	UVoxelWorldGenerator()
-	{
-		unimplemented();
-	};
+	{ };
 	virtual ~UVoxelWorldGenerator()
 	{
 
 	};
 
-	virtual void Generate(UVoxelChunk* Chunk)
+	void Setup(UVoxelChunk* Owner)
+	{
+		OwnerChunk = Owner;
+	}
+	
+	virtual void Generate()
+	{
+		OwnerChunk->BlockStateStorageLock();
+		GenerateInternal();
+		for (auto& Touched : TouchedChunks)
+		{
+			Touched->BlockStateStorageUnlock();
+		}
+		OwnerChunk->BlockStateStorageUnlock();
+	}
+
+	virtual void GenerateInternal()
 	{
 		unimplemented();
-
-		Chunk->BlockStateStorageLock();
+		
 		for (int X = 0; X < VOX_CHUNKSIZE; X++)
 		{
 			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
 			{
 				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
 				{
-					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
-					//Do sturffs here
+					FIntVector GlobalPos = OwnerChunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+					
 				}
 			}
 		}
-		Chunk->BlockStateStorageUnlock();
 	}
 
-	void EditBlock(FWorldGenBlockFunction Func)
+	void EditBlock(FBlockPos Pos, FWorldGenBlockOperation Func)
 	{
-
+		UVoxelChunk* Chunk = Pos.GetChunk();
+		if (Chunk != OwnerChunk)
+		{
+			TouchedChunks.Add(Chunk);
+			Chunk->BlockStateStorageLock();
+		}
+		Func(Chunk->GetBlockState(Pos));
 	}
 };
 
@@ -53,7 +75,7 @@ public:
 	virtual ~UFlatWorldGenerator()
 	{ }
 
-	virtual void Generate(UVoxelChunk* Chunk) override
+	virtual void GenerateInternal() override
 	{
 		for (int X = 0; X < VOX_CHUNKSIZE; X++)
 		{
@@ -61,15 +83,8 @@ public:
 			{
 				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
 				{
-					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
-					if (GlobalPos.Z <= 0)
-					{
-						
-					}
-					else
-					{
+					FIntVector GlobalPos = OwnerChunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
 
-					}
 				}
 			}
 		}

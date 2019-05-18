@@ -25,14 +25,21 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	float VoxelSize;
 
+	UPROPERTY(BlueprintReadWrite)
+	TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
+
 private:
 	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> LoadedChunk;
+
+	FCriticalSection LoadedChunkLock;
 
 	TSet<FVoxelInvoker> InvokersList;
 
 	UPROPERTY()
 	TArray<AVoxelChunkRender*> FreeRender;
+
+	UClass* WorldGeneratorInit;
 
 	bool IsInitialized;
 
@@ -40,6 +47,8 @@ private:
 
 private:
 	AVoxelChunkRender* CreateRenderActor();
+
+	UVoxelChunk* CreateVoxelChunk(FIntVector Index);
 
 public:
 	AVoxelWorld();
@@ -57,9 +66,10 @@ public:
 	void RegisterInvoker(AActor* Object, bool DoRender);
 
 	float GetVoxelSize();
+	UClass* GetWorldGenerator();
 
-	//It can create chunk
 	UVoxelChunk* GetChunkFromIndex(FIntVector Pos);
+	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
 };

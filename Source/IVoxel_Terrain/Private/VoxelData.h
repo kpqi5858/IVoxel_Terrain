@@ -129,50 +129,67 @@ struct FVoxelInvoker
 	}
 };
 
+//Struct that handles voxel's position
+//Do not edit the values of struct after initialization
 USTRUCT(BlueprintType)
 struct FBlockPos
 {
 	GENERATED_USTRUCT_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite)
-	UVoxelChunk* Chunk;
+	AVoxelWorld* World;
 
 	UPROPERTY(BlueprintReadWrite)
-	FIntVector ChunkLocalPos;
+	FIntVector GlobalPos;
+
 private:
-	inline void ChunkLocalPosValidCheck()
-	{
-		check(!VOX_IS_OUTOFLOCALPOS(ChunkLocalPos));
-	}
 	inline void ValidCheck()
 	{
-		check(Chunk);
-		ChunkLocalPosValidCheck();
+		check(World);
 	}
 
 public:
 	FBlockPos()
-		: Chunk(nullptr), ChunkLocalPos(FIntVector(0))
+		: World(nullptr), GlobalPos(FIntVector(0))
 	{ }
 
 	FBlockPos(UVoxelChunk* mChunk, FIntVector LocalPos)
-		: Chunk(mChunk), ChunkLocalPos(LocalPos)
-	{ }
+	{
+		GlobalPos = mChunk->LocalToGlobalPosition(LocalPos);
+		World = mChunk->GetVoxelWorld();
+	}
+
+	FBlockPos(AVoxelWorld* VoxelWorld, FIntVector GlobalPosition)
+	{
+		World = VoxelWorld;
+		GlobalPos = GlobalPosition;
+	}
 
 	FIntVector GetGlobalPosition()
 	{
-		ValidCheck();
-		return Chunk->LocalToGlobalPosition(ChunkLocalPos);
+		return GlobalPos;
 	}
 	
 	AVoxelWorld* GetWorld()
 	{
-		return Chunk->GetVoxelWorld();
+		return World;
+	}
+
+	FIntVector GetChunkIndex()
+	{
+		return FIntVector(GlobalPos.X % VOX_CHUNKSIZE
+						, GlobalPos.Y % VOX_CHUNKSIZE
+						, GlobalPos.Z % VOX_CHUNKSIZE);
+	}
+
+	UVoxelChunk* GetChunk()
+	{
+		return World->GetChunkFromBlockPos(*this);
 	}
 public:
 	int ArrayIndex()
 	{
-		ChunkLocalPosValidCheck();
+		FIntVector ChunkLocalPos = GetChunkIndex();
 		return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);
 	}
 };

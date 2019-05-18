@@ -1,5 +1,6 @@
 #include "VoxelWorld.h"
 #include "VoxelChunkRender.h"
+#include "WorldGenerator.h"
 
 AVoxelWorld::AVoxelWorld()
 {
@@ -8,6 +9,7 @@ AVoxelWorld::AVoxelWorld()
 
 void AVoxelWorld::BeginPlay()
 {
+	Initialize();
 }
 
 void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -23,6 +25,13 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
 {
 	return (AVoxelChunkRender*) GetWorld()->SpawnActor(AVoxelChunkRender::StaticClass());
+}
+
+UVoxelChunk* AVoxelWorld::CreateVoxelChunk(FIntVector Index)
+{
+	auto NewChunk = NewObject<UVoxelChunk>(this);
+	NewChunk->Initialize(Index);
+	return NewChunk;
 }
 
 AVoxelChunkRender* AVoxelWorld::GetFreeRenderActor()
@@ -47,6 +56,12 @@ void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
 	VoxelSizeInit = VoxelSize;
+	WorldGeneratorInit = WorldGenerator.Get();
+	if (!WorldGenerator)
+	{
+		UE_LOG(LogIVoxel, Error, TEXT("World generator is null"));
+		WorldGeneratorInit = UFlatWorldGenerator::StaticClass();
+	}
 }
 
 void AVoxelWorld::RegisterInvoker(AActor* Object, bool DoRender)
@@ -61,10 +76,31 @@ float AVoxelWorld::GetVoxelSize()
 	return VoxelSizeInit;
 }
 
+UClass* AVoxelWorld::GetWorldGenerator()
+{
+	check(IsInitialized)
+	return WorldGeneratorInit;
+}
+
 UVoxelChunk* AVoxelWorld::GetChunkFromIndex(FIntVector Pos)
 {
+	FScopeLock Lock(&LoadedChunkLock);
 	check(IsInitialized);
-	return nullptr;
+
+	UVoxelChunk** Find = LoadedChunk.Find(Pos);
+	if (Find) return *Find;
+	else
+	{
+		auto Chunk = CreateVoxelChunk(Pos);
+		LoadedChunk.Add(Pos, Chunk);
+		return Chunk;
+	}
+}
+
+UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos)
+{
+	FIntVector Index = Pos.GetChunkIndex();
+	return GetChunkFromIndex(Index);
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)

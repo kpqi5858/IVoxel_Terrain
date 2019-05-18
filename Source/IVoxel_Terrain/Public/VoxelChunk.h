@@ -4,6 +4,7 @@
 #include "IVoxel_Terrain.h"
 #include "BlockStateStorage.h"
 #include "GameFramework/Actor.h"
+#include "WorldGenerator.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
@@ -36,6 +37,8 @@ protected:
 
     bool RenderDirty = false;
 
+	UVoxelWorldGenerator* WorldGenerator;
+
 	TSharedPtr<TAbstractBlockStorage<FBlockState>> BlockStateStorage;
 
 public:
@@ -44,14 +47,14 @@ public:
 	AVoxelChunkRender* RenderActor = nullptr;
 
 	UPROPERTY(BlueprintReadOnly)
-	EChunkState ChunkState;
+	EChunkState ChunkState = EChunkState::CS_Invalid;
 
 public:
     UVoxelChunk();
 
     virtual void ChunkTick();
 
-    void Initialize();
+    void Initialize(AVoxelWorld* VoxelWorld, FIntVector ChunkIndex);
 
     void InitRender();
     void DeInitRender();
@@ -59,6 +62,10 @@ public:
 	//Only lock when your operation is not in game thread
 	void BlockStateStorageLock();
 	void BlockStateStorageUnlock();
+	
+	void SetChunkState(EChunkState NewState);
+
+	bool IsValidChunk();
 
     FBlockState* GetBlockState(FBlockPos Pos);
 	void SetBlock(FBlockPos Pos, UBlock* Block);
