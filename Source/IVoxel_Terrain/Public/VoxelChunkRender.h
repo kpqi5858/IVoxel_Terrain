@@ -23,5 +23,7 @@ public:
 
 	bool IsInitialized();
 
+	void RenderTick();
+
 	UVoxelChunk* GetVoxelChunk();
 };

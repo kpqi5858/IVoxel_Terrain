@@ -11,7 +11,7 @@ class UVoxelWorldGenerator : public UObject
 {
 	GENERATED_BODY()
 public:
-	UVoxelChunk* OwnerChunk;
+	UVoxelChunk* OwnerChunk = nullptr;
 	TSet<UVoxelChunk*> TouchedChunks;
 
 public:
@@ -25,18 +25,22 @@ public:
 	void Setup(UVoxelChunk* Owner)
 	{
 		OwnerChunk = Owner;
-	}
+	};
 	
 	virtual void Generate()
 	{
+		check(OwnerChunk);
+
 		OwnerChunk->BlockStateStorageLock();
 		GenerateInternal();
 		for (auto& Touched : TouchedChunks)
 		{
 			Touched->BlockStateStorageUnlock();
 		}
+		TouchedChunks.Empty();
 		OwnerChunk->BlockStateStorageUnlock();
-	}
+		OwnerChunk->IsWorldGenFinished = true;
+	};
 
 	virtual void GenerateInternal()
 	{
@@ -53,18 +57,21 @@ public:
 				}
 			}
 		}
-	}
+	};
 
 	void EditBlock(FBlockPos Pos, FWorldGenBlockOperation Func)
 	{
 		UVoxelChunk* Chunk = Pos.GetChunk();
-		if (Chunk != OwnerChunk)
+		if (Chunk != OwnerChunk && !TouchedChunks.Contains(Chunk))
 		{
 			TouchedChunks.Add(Chunk);
+
+			Chunk->WorldGeneratorsReferences.Increment();
+			Chunk->TrySetChunkState(EChunkState::CS_WorldGenGenerated);
 			Chunk->BlockStateStorageLock();
 		}
 		Func(Chunk->GetBlockState(Pos));
-	}
+	};
 };
 
 UCLASS()
@@ -77,6 +84,8 @@ public:
 
 	virtual void GenerateInternal() override
 	{
+		unimplemented();
+
 		for (int X = 0; X < VOX_CHUNKSIZE; X++)
 		{
 			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)

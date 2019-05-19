@@ -28,13 +28,17 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
 
+	//How frequent invokers creating/updating chunks
+	UPROPERTY(BlueprintReadWrite)
+	int CreateChunkInterval;
+
 private:
 	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> LoadedChunk;
 
 	FCriticalSection LoadedChunkLock;
 
-	TSet<FVoxelInvoker> InvokersList;
+	TArray<FVoxelInvoker> InvokersList;
 
 	UPROPERTY()
 	TArray<AVoxelChunkRender*> FreeRender;
@@ -45,11 +49,14 @@ private:
 
 	float VoxelSizeInit;
 
+	long InternalTicks = 0;
+
 private:
 	AVoxelChunkRender* CreateRenderActor();
 
 	UVoxelChunk* CreateVoxelChunk(FIntVector Index);
 
+	UVoxelChunk* GetChunkFromIndex_Internal(FIntVector Pos);
 public:
 	AVoxelWorld();
 
@@ -66,10 +73,18 @@ public:
 	void RegisterInvoker(AActor* Object, bool DoRender);
 
 	float GetVoxelSize();
-	UClass* GetWorldGenerator();
+	UClass* GetWorldGeneratorClass();
 
-	UVoxelChunk* GetChunkFromIndex(FIntVector Pos);
-	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos);
+	//It can create chunk
+	UVoxelChunk* GetChunkFromIndex(FIntVector Pos, bool DoLock = true);
+	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos, bool DoLock = true);
+
+	FIntVector WorldPosToVoxelPos(FVector Pos);
+
+	bool ShouldChunkRendered(UVoxelChunk* Chunk);
+	bool ShouldGenerateWorld(UVoxelChunk* Chunk);
+
+	void QueueWorldGeneration(UVoxelChunk* Chunk);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
 };

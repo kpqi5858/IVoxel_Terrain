@@ -19,7 +19,52 @@ void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 
 void AVoxelWorld::Tick(float DeltaSeconds)
 {
+	InternalTicks++;
 
+	//Remove invalid invokers
+	InvokersList.RemoveAll([](FVoxelInvoker& VoxelInvoker)
+	{
+		return !VoxelInvoker.IsValid();
+	});
+
+	//Create chunks around invokers
+	//And lock LoadedChunk
+	if (InternalTicks % CreateChunkInterval == 0)
+	{
+		FScopeLock Lock(&LoadedChunkLock);
+
+		for (auto& Invoker : InvokersList)
+		{
+			AActor* InvokerActor = Invoker.Object.Get();
+			FIntVector ChunkPos = FBlockPos(this, WorldPosToVoxelPos(InvokerActor->GetActorLocation())).GetChunkIndex();
+
+			FIntVector MinPos = ChunkPos - (RenderChunkSize + PreGenerateChunkSize);
+			FIntVector MaxPos = ChunkPos + (RenderChunkSize + PreGenerateChunkSize);
+
+			for (int X = MinPos.X; X < MaxPos.X; X++)
+			for (int Y = MinPos.Y; Y < MaxPos.Y; Y++)
+			for (int Z = MinPos.Z; Z < MaxPos.Z; Z++)
+			{
+				//Already locked LoadedChunk
+				UVoxelChunk* Chunk = GetChunkFromIndex(FIntVector(X, Y, Z), false);
+
+				Chunk->TrySetChunkState(EChunkState::CS_NoRender);
+			}
+		}
+	}
+
+	//Tick loaded chunks
+	TArray<UVoxelChunk*> ToTick;
+	ToTick.Reserve(LoadedChunk.Num());
+
+	LoadedChunk.GenerateValueArray(ToTick);
+	for (auto& Chunk : ToTick)
+	{
+		if (Chunk->ShouldBeTicked)
+		{
+			Chunk->ChunkTick();
+		}
+	}
 }
 
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
@@ -30,7 +75,7 @@ AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
 UVoxelChunk* AVoxelWorld::CreateVoxelChunk(FIntVector Index)
 {
 	auto NewChunk = NewObject<UVoxelChunk>(this);
-	NewChunk->Initialize(Index);
+	NewChunk->Initialize(this, Index);
 	return NewChunk;
 }
 
@@ -76,15 +121,14 @@ float AVoxelWorld::GetVoxelSize()
 	return VoxelSizeInit;
 }
 
-UClass* AVoxelWorld::GetWorldGenerator()
+UClass* AVoxelWorld::GetWorldGeneratorClass()
 {
 	check(IsInitialized)
 	return WorldGeneratorInit;
 }
 
-UVoxelChunk* AVoxelWorld::GetChunkFromIndex(FIntVector Pos)
+UVoxelChunk* AVoxelWorld::GetChunkFromIndex_Internal(FIntVector Pos)
 {
-	FScopeLock Lock(&LoadedChunkLock);
 	check(IsInitialized);
 
 	UVoxelChunk** Find = LoadedChunk.Find(Pos);
@@ -97,10 +141,89 @@ UVoxelChunk* AVoxelWorld::GetChunkFromIndex(FIntVector Pos)
 	}
 }
 
-UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos)
+UVoxelChunk* AVoxelWorld::GetChunkFromIndex(FIntVector Pos, bool DoLock)
+{
+	if (DoLock)
+	{
+		FScopeLock Lock(&LoadedChunkLock);
+		return GetChunkFromIndex_Internal(Pos);
+	}
+	else
+	{
+		return GetChunkFromIndex_Internal(Pos);
+	}
+}
+
+UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos, bool DoLock)
 {
 	FIntVector Index = Pos.GetChunkIndex();
-	return GetChunkFromIndex(Index);
+	return GetChunkFromIndex(Index, DoLock);
+}
+
+FIntVector AVoxelWorld::WorldPosToVoxelPos(FVector Pos)
+{
+	return FIntVector(Pos / GetVoxelSize());
+}
+
+bool AVoxelWorld::ShouldChunkRendered(UVoxelChunk* Chunk)
+{
+	bool Result = false;
+
+	FIntVector ChunkPos = Chunk->GetChunkPosition();
+
+	for (auto& Invoker : InvokersList)
+	{
+		if (Invoker.IsValid() && Invoker.ShouldRender)
+		{
+			FIntVector PosDifference = FBlockPos(this, WorldPosToVoxelPos(Invoker.Object->GetActorLocation())).GetChunkIndex() - ChunkPos;
+			PosDifference.X = FMath::Abs(PosDifference.X);
+			PosDifference.Y = FMath::Abs(PosDifference.Y);
+			PosDifference.Z = FMath::Abs(PosDifference.Z);
+
+			if (PosDifference.X <= RenderChunkSize.X
+				|| PosDifference.Y <= RenderChunkSize.Y
+				|| PosDifference.Z <= RenderChunkSize.Z)
+			{
+				Result = true;
+				break;
+			}
+		}
+	}
+	return Result;
+}
+
+bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk * Chunk)
+{
+	bool Result = false;
+
+	FIntVector ChunkPos = Chunk->GetChunkPosition();
+	FIntVector MaxDifference = RenderChunkSize + PreGenerateChunkSize;
+
+	for (auto& Invoker : InvokersList)
+	{
+		if (Invoker.IsValid() && Invoker.ShouldRender)
+		{
+			FIntVector PosDifference = FBlockPos(this, WorldPosToVoxelPos(Invoker.Object->GetActorLocation())).GetChunkIndex() - ChunkPos;
+			PosDifference.X = FMath::Abs(PosDifference.X);
+			PosDifference.Y = FMath::Abs(PosDifference.Y);
+			PosDifference.Z = FMath::Abs(PosDifference.Z);
+
+			if (PosDifference.X <= MaxDifference.X
+				|| PosDifference.Y <= MaxDifference.Y
+				|| PosDifference.Z <= MaxDifference.Z)
+			{
+				Result = true;
+				break;
+			}
+		}
+	}
+	return Result;
+}
+
+void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
+{
+	//Currently only synchronous
+	Chunk->GenerateWorld();
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
