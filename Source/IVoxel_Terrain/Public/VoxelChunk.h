@@ -1,16 +1,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BlockState.h"
 #include "IVoxel_Terrain.h"
 #include "BlockStateStorage.h"
 #include "GameFramework/Actor.h"
 #include "HAL/ThreadSafeBool.h"
-#include "WorldGenerator.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
 class FBlockState;
 class AVoxelChunkRender;
+class UVoxelWorldGenerator;
+template<typename T>
+class TAbstractBlockStorage;
+struct FBlockPos;
 
 UENUM(BlueprintType)
 enum class EChunkState : uint8

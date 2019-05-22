@@ -1,14 +1,15 @@
 #pragma once
 
-#include "Block.h"
 #include "VoxelChunk.h"
+#include "VoxelWorld.h"
 #include "IVoxel_Terrain.h"
 #include "VoxelData.generated.h"
 
-//Structs
+//TODO : Move the implementation to .cpp files
 
-class UVoxelChunk;
+//Structs
 class AVoxelWorld;
+class UVoxelChunk;
 
 UENUM(BlueprintType)
 enum class EBlockFace : uint8
@@ -25,7 +26,7 @@ public:
 		{
 		case EBlockFace::INVALID :
 		{
-			ensureMsgf(false, "GetFaceOffset called with invalid face");
+			ensureMsgf(false, TEXT("GetFaceOffset called with invalid face"));
 			return FIntVector(0);
 		}
 		case EBlockFace::FRONT :
@@ -52,7 +53,7 @@ public:
 		{
 		case EBlockFace::INVALID:
 		{
-			ensureMsgf(false, "GetFaceOffset called with invalid face");
+			ensureMsgf(false, TEXT("GetFaceOffset called with invalid face"));
 			return FVector(0);
 		}
 		case EBlockFace::FRONT:

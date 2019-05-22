@@ -1,6 +1,7 @@
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
 #include "VoxelChunkRender.h"
+#include "WorldGenerator.h"
 
 UVoxelChunk::UVoxelChunk()
 {
@@ -58,7 +59,7 @@ void UVoxelChunk::Initialize(AVoxelWorld* VoxelWorld, FIntVector ChunkIndex)
 	BlockStateStorage->Initialize(
 	[&](int Index)
 	{
-		return (void*) new FBlockState(FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index)));
+		return (void*) new FBlockState(this, FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index)));
 	});
 }
 
@@ -151,6 +152,7 @@ FBlockState* UVoxelChunk::GetBlockState(FBlockPos Pos)
 
 void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 {
+	SetRenderDirty();
 	GetBlockState(Pos)->SetBlockDef(Block);
 }
 

@@ -1,8 +1,12 @@
 #pragma once
 
 #include "VoxelWorld.h"
+#include "VoxelData.h"
 
 #include "WorldGenerator.generated.h"
+
+class UVoxelChunk;
+class FBlockState;
 
 typedef TFunction<void(FBlockState*)> FWorldGenBlockOperation;
 
@@ -22,7 +26,7 @@ public:
 
 	};
 
-	void Setup(UVoxelChunk* Owner)
+	virtual void Setup(UVoxelChunk* Owner)
 	{
 		OwnerChunk = Owner;
 	};
@@ -36,6 +40,7 @@ public:
 		for (auto& Touched : TouchedChunks)
 		{
 			Touched->BlockStateStorageUnlock();
+			Touched->WorldGeneratorsReferences.Decrement();
 		}
 		TouchedChunks.Empty();
 		OwnerChunk->BlockStateStorageUnlock();
@@ -59,6 +64,7 @@ public:
 		}
 	};
 
+protected:
 	void EditBlock(FBlockPos Pos, FWorldGenBlockOperation Func)
 	{
 		UVoxelChunk* Chunk = Pos.GetChunk();
@@ -72,6 +78,11 @@ public:
 		}
 		Func(Chunk->GetBlockState(Pos));
 	};
+
+	void SetBlockGen(FBlockPos Pos, UBlock* Block)
+	{
+		EditBlock(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
+	}
 };
 
 UCLASS()
@@ -84,8 +95,6 @@ public:
 
 	virtual void GenerateInternal() override
 	{
-		unimplemented();
-
 		for (int X = 0; X < VOX_CHUNKSIZE; X++)
 		{
 			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)

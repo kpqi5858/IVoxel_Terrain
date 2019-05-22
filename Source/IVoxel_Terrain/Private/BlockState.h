@@ -4,6 +4,9 @@
 #include "Block.h"
 #include "VoxelData.h"
 
+class UVoxelChunk;
+class UBlock;
+enum class EBlockFace : uint8;
 struct FBlockPos;
 
 class FBlockState
@@ -11,7 +14,9 @@ class FBlockState
 public:
 	const FBlockPos Position;
 
-	EBlockFace Facing;
+	EBlockFace Facing = EBlockFace::INVALID;
+
+	UVoxelChunk* Chunk;
 
 private:
 	UBlock* BlockDef;
@@ -20,14 +25,10 @@ private:
 	FBlockState();
 
 public:
-	FBlockState(FBlockPos Pos);
-	FBlockState(UBlock* Block, FBlockPos Pos);
+	FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block = nullptr);
 
 	UBlock* GetBlockDef();
 	void SetBlockDef(UBlock* Block);
 
 	bool IsValid();
-
-	//Is this face actually visible for rendering?
-	bool IsFaceVisible(EBlockFace Face);
 };

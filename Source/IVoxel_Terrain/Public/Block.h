@@ -5,12 +5,65 @@
 
 #include "Block.generated.h"
 
-//Represents "Block"'s property, features, etc
-UCLASS(Blueprintable, abstract)
+enum class EBlockFace : uint8;
+
+//Represents Block's property, features, etc
+UCLASS(Abstract)
 class UBlock : public UObject
 {
 	GENERATED_BODY()
 public:
-	bool IsOpaque();
-	bool IsFaceVisible(EBlockFace Face);
+	UBlock();
+
+	UPROPERTY(EditDefaultsOnly)
+	FName RegistryName;
+
+	//If this is null, the default engine material is used
+	virtual UMaterialInterface* GetMaterial();
+
+	virtual bool IsOpaque();
+
+	virtual bool IsSolid();
+
+	virtual bool IsFaceVisible(EBlockFace Face);
+};
+
+UCLASS()
+class UAirBlock : public UBlock
+{
+	GENERATED_BODY()
+public:
+	UAirBlock()
+	{
+		RegistryName = FName(TEXT("Air"));
+	};
+
+	virtual UMaterialInterface* GetMaterial() override
+	{
+		return nullptr;
+	}
+
+	virtual bool IsOpaque() override { return false; };
+	virtual bool IsSolid() override { return false; };
+	virtual bool IsFaceVisible(EBlockFace Face) override { return false; };
+};
+
+UCLASS()
+class UDefaultSolidBlock : public UBlock
+{
+	GENERATED_BODY()
+public:
+	UDefaultSolidBlock()
+	{
+		RegistryName = FName(TEXT("SolidDefault"));
+	};
+
+	virtual UMaterialInterface* GetMaterial() override
+	{
+		return nullptr;
+	}
+
+	virtual bool IsOpaque() override { return true; };
+	virtual bool IsSolid() override { return true; };
+	virtual bool IsFaceVisible(EBlockFace Face) override { return true; };
 };

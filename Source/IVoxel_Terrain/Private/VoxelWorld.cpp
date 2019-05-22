@@ -1,6 +1,7 @@
 #include "VoxelWorld.h"
 #include "VoxelChunkRender.h"
 #include "WorldGenerator.h"
+#include "VoxelData.h"
 
 AVoxelWorld::AVoxelWorld()
 {
@@ -60,7 +61,7 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 	LoadedChunk.GenerateValueArray(ToTick);
 	for (auto& Chunk : ToTick)
 	{
-		if (Chunk->ShouldBeTicked)
+		if (Chunk->ShouldBeTicked())
 		{
 			Chunk->ChunkTick();
 		}

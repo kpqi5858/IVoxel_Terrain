@@ -4,12 +4,16 @@
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
 #include "IVoxel_Terrain.h"
-#include "VoxelData.h"
 #include "VoxelChunk.h"
+#include "BlockRegistry.h"
 
 #include "VoxelWorld.generated.h"
 
 class UVoxelChunk;
+class UVoxelWorldGenerator;
+class AVoxelChunkRender;
+struct FVoxelInvoker;
+struct FBlockPos;
 
 UCLASS()
 class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
