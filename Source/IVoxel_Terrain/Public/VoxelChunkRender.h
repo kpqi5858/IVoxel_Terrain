@@ -24,6 +24,7 @@ public:
 	bool IsInitialized();
 
 	void RenderTick();
+	void Polygonize();
 
 	UVoxelChunk* GetVoxelChunk();
 };

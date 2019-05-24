@@ -1,7 +1,5 @@
 #pragma once
 
-#include "VoxelChunk.h"
-#include "VoxelWorld.h"
 #include "IVoxel_Terrain.h"
 #include "VoxelData.generated.h"
 
@@ -46,6 +44,32 @@ public:
 			return FIntVector(0);
 		}
 	};
+
+	static EBlockFace GetOppositeFace(EBlockFace Face)
+	{
+		switch (Face)
+		{
+		case EBlockFace::INVALID:
+		{
+			check(false);
+			return EBlockFace::INVALID;
+		}
+		case EBlockFace::FRONT:
+			return EBlockFace::BACK;
+		case EBlockFace::BACK:
+			return EBlockFace::FRONT;
+		case EBlockFace::LEFT:
+			return EBlockFace::RIGHT;
+		case EBlockFace::RIGHT:
+			return EBlockFace::LEFT;
+		case EBlockFace::TOP:
+			return EBlockFace::BOTTOM;
+		case EBlockFace::BOTTOM:
+			return EBlockFace::TOP;
+		}
+
+		return EBlockFace::INVALID;
+	}
 
 	static FVector GetFaceOffset_Vector(EBlockFace Face)
 	{
@@ -130,6 +154,20 @@ struct FVoxelInvoker
 	}
 };
 
+struct FVoxelPolygonizedSection
+{
+	TArray<FVector> Vertex;
+	TArray<int32> Triangle;
+	TArray<FVector> Normal;
+	TArray<FVector2D> UV;
+	TArray<FColor> Color;
+};
+
+struct FVoxelPolygonizedData
+{
+	TArray<FVoxelPolygonizedSection> Sections;
+};
+
 //Struct that handles voxel's position
 //Do not edit the values of struct after initialization
 USTRUCT(BlueprintType)
@@ -143,54 +181,20 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	FIntVector GlobalPos;
 
-private:
-	inline void ValidCheck()
-	{
-		check(World);
-	}
-
 public:
-	FBlockPos()
-		: World(nullptr), GlobalPos(FIntVector(0))
-	{ }
+	FBlockPos();
 
-	FBlockPos(UVoxelChunk* mChunk, FIntVector LocalPos)
-	{
-		GlobalPos = mChunk->LocalToGlobalPosition(LocalPos);
-		World = mChunk->GetVoxelWorld();
-	}
+	FBlockPos(UVoxelChunk* mChunk, FIntVector LocalPos);
 
-	FBlockPos(AVoxelWorld* VoxelWorld, FIntVector GlobalPosition)
-	{
-		World = VoxelWorld;
-		GlobalPos = GlobalPosition;
-	}
+	FBlockPos(AVoxelWorld* VoxelWorld, FIntVector GlobalPosition);
 
-	FIntVector GetGlobalPosition()
-	{
-		return GlobalPos;
-	}
+	FIntVector GetGlobalPosition();
 	
-	AVoxelWorld* GetWorld()
-	{
-		return World;
-	}
+	AVoxelWorld* GetWorld();
 
-	FIntVector GetChunkIndex()
-	{
-		return FIntVector(GlobalPos.X % VOX_CHUNKSIZE
-						, GlobalPos.Y % VOX_CHUNKSIZE
-						, GlobalPos.Z % VOX_CHUNKSIZE);
-	}
+	FIntVector GetChunkIndex();
 
-	UVoxelChunk* GetChunk()
-	{
-		return World->GetChunkFromBlockPos(*this);
-	}
+	UVoxelChunk* GetChunk();
 public:
-	int ArrayIndex()
-	{
-		FIntVector ChunkLocalPos = GetChunkIndex();
-		return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);
-	}
+	int ArrayIndex();
 };

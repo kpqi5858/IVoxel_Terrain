@@ -2,6 +2,7 @@
 #include "VoxelWorld.h"
 #include "VoxelChunkRender.h"
 #include "WorldGenerator.h"
+#include "BlockStateStorage.h"
 
 UVoxelChunk::UVoxelChunk()
 {

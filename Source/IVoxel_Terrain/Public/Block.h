@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelData.h"
+#include "Materials/MaterialInstance.h"
 
 #include "Block.generated.h"
 
@@ -13,19 +14,34 @@ class UBlock : public UObject
 {
 	GENERATED_BODY()
 public:
-	UBlock();
+	UBlock()
+	{
+
+	};
 
 	UPROPERTY(EditDefaultsOnly)
 	FName RegistryName;
 
-	//If this is null, the default engine material is used
-	virtual UMaterialInterface* GetMaterial();
+	//If this is nullptr, the default engine material is used
+	virtual UMaterialInterface* GetMaterial()
+	{
+		return nullptr;
+	};
 
-	virtual bool IsOpaque();
+	virtual bool IsOpaque()
+	{
+		return false;
+	};
 
-	virtual bool IsSolid();
+	virtual bool IsSolid()
+	{
+		return false;
+	};
 
-	virtual bool IsFaceVisible(EBlockFace Face);
+	virtual bool IsFaceVisible(EBlockFace Face)
+	{
+		return false;
+	};
 };
 
 UCLASS()

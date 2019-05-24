@@ -1,8 +1,13 @@
 #include "BlockState.h"
 
+FBlockState::FBlockState()
+{
+}
+
 FBlockState::FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block)
 	: Position(Pos)
 {
+	Facing = EBlockFace::INVALID;
 	if (!Block)
 	{
 		Block = GETBLOCK_T(TEXT("Air"));

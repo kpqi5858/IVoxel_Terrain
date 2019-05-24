@@ -1,5 +1,8 @@
 #include "BlockRegistry.h"
 
+TWeakPtr<FBlockRegistryInstance> FBlockRegistry::InstancePtr = TWeakPtr<FBlockRegistryInstance>();
+TArray<TWeakObjectPtr<UClass>> FBlockRegistry::BlockRegistry = TArray< TWeakObjectPtr<UClass>>();
+
 FBlockRegistryInstance::FBlockRegistryInstance()
 {
 	ensureMsgf(false, TEXT("Default constructor of FBlockRegistryInstance called"));
@@ -103,6 +106,6 @@ TSharedPtr<FBlockRegistryInstance> FBlockRegistry::GetInstance()
 
 FBlockRegistryInstance* FBlockRegistry::GetInstance_Ptr()
 {
-	checkf(InstancePtr.IsValid(), "GetInstance_Ptr called with no reference");
+	checkf(InstancePtr.IsValid(), TEXT("GetInstance_Ptr called with no reference"));
 	return InstancePtr.Pin().Get();
 }

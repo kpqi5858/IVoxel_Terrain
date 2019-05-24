@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Block.h"
+#include "BlockRegistry.h"
 #include "VoxelData.h"
 
 class UVoxelChunk;
@@ -12,19 +13,17 @@ struct FBlockPos;
 class FBlockState
 {
 public:
-	const FBlockPos Position;
+	FBlockPos Position;
 
-	EBlockFace Facing = EBlockFace::INVALID;
+	EBlockFace Facing;
 
 	UVoxelChunk* Chunk;
 
 private:
 	UBlock* BlockDef;
 
-private:
-	FBlockState();
-
 public:
+	FBlockState();
 	FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block = nullptr);
 
 	UBlock* GetBlockDef();
