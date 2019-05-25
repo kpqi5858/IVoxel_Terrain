@@ -28,7 +28,9 @@ void FVoxelPolygonizer::DoPolygonize()
 	for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
 	{
 		const FIntVector LocalPos = FIntVector(X, Y, Z);
-		const auto ThisBlock = Chunk->GetBlockState(FBlockPos(Chunk, LocalPos));
+		FBlockPos BlockPos = FBlockPos(Chunk, LocalPos);
+		checkf(Chunk == BlockPos.GetChunk(), TEXT("%s"), *BlockPos.GetChunkIndex().ToString());
+		const auto ThisBlock = Chunk->GetBlockState(BlockPos);
 		const auto BlockDef = ThisBlock->GetBlockDef();
 
 		int SectionNum = Materials.IndexOfByKey(BlockDef->GetMaterial());
@@ -37,12 +39,16 @@ void FVoxelPolygonizer::DoPolygonize()
 			PolygonizedData->Sections.AddDefaulted();
 			Materials.Add(BlockDef->GetMaterial());
 			SectionNum = Materials.Num() - 1;
+			PolygonizedData->Sections[SectionNum].Material = BlockDef->GetMaterial();
 		}
 		check(PolygonizedData->Sections.IsValidIndex(SectionNum));
 
 		for (EBlockFace Face : AllFaces)
 		{
-
+			if (IsThisFaceVisible(BlockPos, Face))
+			{
+				CreateFace(X, Y, Z, SectionNum, Face);
+			}
 		}
 	}
 
@@ -55,13 +61,116 @@ bool FVoxelPolygonizer::IsDone()
 	return IsFinished;
 }
 
-FVoxelPolygonizedData* FVoxelPolygonizer::GetPolygonizedData()
+FVoxelPolygonizedData* FVoxelPolygonizer::PopPolygonizedData()
 {
 	check(IsFinished);
+	IsFinished = false;
 	return PolygonizedData;
+}
+
+inline bool FVoxelPolygonizer::IsThisFaceVisible(FBlockPos Pos, EBlockFace Face)
+{
+	return Pos.GetChunk()->GetFaceVisiblityCache(Pos).IsThisFaceVisible(Face);
 }
 
 inline void FVoxelPolygonizer::CreateFace(int X, int Y, int Z, int Section, EBlockFace Face)
 {
+	FVoxelPolygonizedSection& ThisSection = PolygonizedData->Sections[Section];
 
+	const int TriIndex = ThisSection.Vertex.Num();
+
+	const float VoxSize = VoxelSize;
+
+	FVector BoxVerts[8];
+	BoxVerts[0] = FVector(0, VoxSize, VoxSize);
+	BoxVerts[1] = FVector(VoxSize, VoxSize, VoxSize);
+	BoxVerts[2] = FVector(VoxSize, 0, VoxSize);
+	BoxVerts[3] = FVector(0, 0, VoxSize);
+
+	BoxVerts[4] = FVector(0, VoxSize, 0);
+	BoxVerts[5] = FVector(VoxSize, VoxSize, 0);
+	BoxVerts[6] = FVector(VoxSize, 0, 0);
+	BoxVerts[7] = FVector(0, 0, 0);
+
+	auto VertexBuilder = [&](FVector V, FVector N, FVector2D UV)
+	{
+		ThisSection.Vertex.Add(V + FVector(X*VoxSize, Y*VoxSize, Z*VoxSize));
+		ThisSection.Normal.Add(N);
+		ThisSection.UV.Add(UV);
+	};
+	
+	FVector Normal;
+
+	switch (Face)
+	{
+	//Pos Z
+	case EBlockFace::TOP :
+	{
+		Normal = FVector(0.0f, 0.0f, 1.0f);
+		VertexBuilder(BoxVerts[0], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[1], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[2], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[3], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	//Neg Z
+	case EBlockFace::BOTTOM :
+	{
+		Normal = FVector(0.0f, 0.0f, -1.0f);
+		VertexBuilder(BoxVerts[7], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[6], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[5], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[4], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	//Neg Y
+	case EBlockFace::LEFT:
+	{
+		Normal = FVector(0.0f, -1.0f, 0.0f);
+		VertexBuilder(BoxVerts[7], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[3], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[2], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[6], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	//Pos Y
+	case EBlockFace::RIGHT:
+	{
+		Normal = FVector(0.0f, 1.0f, 0.0f);
+		VertexBuilder(BoxVerts[5], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[1], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[0], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[4], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	//Pos X
+	case EBlockFace::FRONT:
+	{
+		Normal = FVector(1.0f, 0.0f, 0.0f);
+		VertexBuilder(BoxVerts[6], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[2], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[1], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[5], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	//Neg X
+	case EBlockFace::BACK:
+	{
+		Normal = FVector(-1.0f, 0.0f, 0.0f);
+		VertexBuilder(BoxVerts[4], Normal, FVector2D(0.0f, 0.0f));
+		VertexBuilder(BoxVerts[0], Normal, FVector2D(0.0f, 1.0f));
+		VertexBuilder(BoxVerts[3], Normal, FVector2D(1.0f, 1.0f));
+		VertexBuilder(BoxVerts[7], Normal, FVector2D(1.0f, 0.0f));
+		break;
+	}
+	default:
+		check(false);
+	}
+
+	ThisSection.Triangle.Add(TriIndex);
+	ThisSection.Triangle.Add(TriIndex+1);
+	ThisSection.Triangle.Add(TriIndex+3);
+	ThisSection.Triangle.Add(TriIndex+1);
+	ThisSection.Triangle.Add(TriIndex+2);
+	ThisSection.Triangle.Add(TriIndex+3);
 }

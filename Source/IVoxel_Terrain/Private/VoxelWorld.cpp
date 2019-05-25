@@ -2,24 +2,35 @@
 #include "VoxelChunkRender.h"
 #include "WorldGenerator.h"
 #include "VoxelData.h"
+#include "VoxelThreads.h"
 
 AVoxelWorld::AVoxelWorld()
 {
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+
+	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bHighPriority = true;
+	PolygonizerThreadPool = FQueuedThreadPool::Allocate();
+	WorldGeneratorThreadPool = FQueuedThreadPool::Allocate();
+
 }
 
 void AVoxelWorld::BeginPlay()
 {
+	Super::BeginPlay();
 	Initialize();
 }
 
 void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
-
+	PolygonizerThreadPool->Destroy();
+	WorldGeneratorThreadPool->Destroy();
 }
 
 void AVoxelWorld::Tick(float DeltaSeconds)
 {
+	Super::Tick(DeltaSeconds);
+
 	InternalTicks++;
 
 	//Remove invalid invokers
@@ -101,18 +112,22 @@ void AVoxelWorld::FreeRenderActor(AVoxelChunkRender* RenderActor)
 void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
+	PolygonizerThreadPool->Create(PolygonizerThreads, 65536);
+	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 65536);
 	VoxelSizeInit = VoxelSize;
 	WorldGeneratorInit = WorldGenerator.Get();
+	FBlockRegistry::ReloadBlocks();
+	RegistryReference = FBlockRegistry::GetInstance();
 	if (!WorldGenerator)
 	{
 		UE_LOG(LogIVoxel, Error, TEXT("World generator is null"));
 		WorldGeneratorInit = UFlatWorldGenerator::StaticClass();
 	}
+	IsInitialized = true;
 }
 
 void AVoxelWorld::RegisterInvoker(AActor* Object, bool DoRender)
 {
-	check(IsInitialized);
 	InvokersList.Add(FVoxelInvoker(Object, DoRender));
 }
 
@@ -163,7 +178,10 @@ UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos, bool DoLock)
 
 FIntVector AVoxelWorld::WorldPosToVoxelPos(FVector Pos)
 {
-	return FIntVector(Pos / GetVoxelSize());
+	float Size = GetVoxelSize();
+	return FIntVector(FMath::FloorToInt(Pos.X / Size)
+	, FMath::FloorToInt(Pos.Y / Size)
+	, FMath::FloorToInt(Pos.Z / Size));
 }
 
 bool AVoxelWorld::ShouldChunkRendered(UVoxelChunk* Chunk)
@@ -223,8 +241,12 @@ bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk * Chunk)
 
 void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
 {
-	//Currently only synchronous
-	Chunk->GenerateWorld();
+	WorldGeneratorThreadPool->AddQueuedWork(new FWorldGeneratorThread(Chunk));
+}
+
+void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)
+{
+	PolygonizerThreadPool->AddQueuedWork(new FVoxelPolygonizerThread(Render));
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)

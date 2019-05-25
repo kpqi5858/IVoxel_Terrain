@@ -15,7 +15,7 @@ class TAbstractBlockStorage
 public:
 	TAbstractBlockStorage()
 	{
-		checkNoEntry();
+		
 	}
 	virtual ~TAbstractBlockStorage()
 	{

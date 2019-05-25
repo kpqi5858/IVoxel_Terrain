@@ -20,7 +20,7 @@ public:
 	UVoxelChunk* Chunk;
 
 private:
-	UBlock* BlockDef;
+	UBlock* BlockDef = nullptr;
 
 public:
 	FBlockState();

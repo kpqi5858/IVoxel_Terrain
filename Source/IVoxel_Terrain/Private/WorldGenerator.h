@@ -8,7 +8,7 @@
 class UVoxelChunk;
 class FBlockState;
 
-typedef TFunction<void(FBlockState*)> FWorldGenBlockOperation;
+typedef TFunction<void(FBlockPos, UVoxelChunk*, FBlockState*)> FWorldGenBlockOperation;
 
 UCLASS(Abstract)
 class UVoxelWorldGenerator : public UObject
@@ -44,7 +44,7 @@ public:
 		}
 		TouchedChunks.Empty();
 		OwnerChunk->BlockStateStorageUnlock();
-		OwnerChunk->IsWorldGenFinished = true;
+		OwnerChunk->WorldGenState = EWorldGenState::GENERATED;
 	};
 
 	virtual void GenerateInternal()
@@ -76,12 +76,12 @@ protected:
 			Chunk->TrySetChunkState(EChunkState::CS_WorldGenGenerated);
 			Chunk->BlockStateStorageLock();
 		}
-		Func(Chunk->GetBlockState(Pos));
+		Func(Pos, Chunk, Chunk->GetBlockState(Pos));
 	};
 
 	void SetBlockGen(FBlockPos Pos, UBlock* Block)
 	{
-		EditBlock(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
+		EditBlock(Pos, [&](FBlockPos Pos, UVoxelChunk* Chunk, FBlockState* State) {Chunk->SetBlock(Pos, Block); });
 	}
 };
 
@@ -101,8 +101,41 @@ public:
 			{
 				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
 				{
-					FIntVector GlobalPos = OwnerChunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+					FBlockPos Pos = FBlockPos(OwnerChunk, FIntVector(X, Y, Z));
 
+					if (Pos.GlobalPos.Z <= 0)
+					{
+						SetBlockGen(Pos, GETBLOCK_C("SolidDefault"));
+					}
+					else
+					{
+						SetBlockGen(Pos, GETBLOCK_C("Air"));
+					}
+				}
+			}
+		}
+	};
+};
+
+UCLASS()
+class UEmptyWorldGenerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+public:
+	virtual ~UEmptyWorldGenerator()
+	{ }
+
+	virtual void GenerateInternal() override
+	{
+		for (int X = 0; X < VOX_CHUNKSIZE; X++)
+		{
+			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
+			{
+				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
+				{
+					FBlockPos Pos = FBlockPos(OwnerChunk, FIntVector(X, Y, Z));
+
+					SetBlockGen(Pos, GETBLOCK_C("Air"));
 				}
 			}
 		}

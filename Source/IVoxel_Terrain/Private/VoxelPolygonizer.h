@@ -9,6 +9,7 @@ private:
 	FVoxelPolygonizedData* PolygonizedData = nullptr;
 
 	bool IsFinished = false;
+
 	float VoxelSize;
 
 public:
@@ -17,8 +18,10 @@ public:
 	void DoPolygonize();
 
 	bool IsDone();
-	FVoxelPolygonizedData* GetPolygonizedData();
+	//Also sets IsFinished flag to false
+	FVoxelPolygonizedData* PopPolygonizedData();
 
 private:
+	inline bool IsThisFaceVisible(FBlockPos Pos, EBlockFace Face);
 	inline void CreateFace(int X, int Y, int Z, int Section, EBlockFace Face);
 };

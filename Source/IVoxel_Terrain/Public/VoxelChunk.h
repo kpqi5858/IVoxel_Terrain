@@ -30,6 +30,14 @@ enum class EChunkState : uint8
 	CS_QueuedDeletion
 };
 
+enum class EWorldGenState : uint8
+{
+	NOT_GENERATED,
+	GENERATING,
+	GENERATED,
+	DIRTYSET
+};
+
 UCLASS(Blueprintable)
 class IVOXEL_TERRAIN_API UVoxelChunk : public UObject
 {
@@ -41,9 +49,11 @@ protected:
 
     bool RenderDirty = false;
 
+	UPROPERTY()
 	UVoxelWorldGenerator* WorldGenerator;
 
 	TSharedPtr<TAbstractBlockStorage<FBlockState>> BlockStateStorage;
+	TSharedPtr<TAbstractBlockStorage<FFaceVisiblityCache>> FaceVisiblityCache;
 
 	EChunkState ChunkState = EChunkState::CS_Invalid;
 	FCriticalSection ChunkStateLock;
@@ -55,8 +65,7 @@ public:
 
 	FThreadSafeCounter WorldGeneratorsReferences;
 
-	bool IsGeneratingWorld = false;
-	FThreadSafeBool IsWorldGenFinished;
+	EWorldGenState WorldGenState = EWorldGenState::NOT_GENERATED;
 
 public:
     UVoxelChunk();
@@ -78,7 +87,12 @@ public:
 	bool IsValidChunk();
 
     FBlockState* GetBlockState(FBlockPos Pos);
+	UFUNCTION(BlueprintCallable)
 	void SetBlock(FBlockPos Pos, UBlock* Block);
+
+	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos Pos);
+
+	void UpdateBlock(FBlockPos Pos);
 
 	bool ShouldBeRendered();
 	bool ShouldBeTicked();

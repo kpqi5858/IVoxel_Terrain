@@ -20,21 +20,27 @@ class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere)
 	FIntVector RenderChunkSize;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere)
 	FIntVector PreGenerateChunkSize;
 	
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere)
 	float VoxelSize;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere)
 	TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
 
 	//How frequent invokers creating/updating chunks
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere)
 	int CreateChunkInterval;
+
+	UPROPERTY(EditAnywhere)
+	int WorldGeneratorThreads = 1;
+
+	UPROPERTY(EditAnywhere)
+	int PolygonizerThreads = 2;
 
 private:
 	UPROPERTY()
@@ -55,6 +61,11 @@ private:
 
 	long InternalTicks = 0;
 
+	TSharedPtr<FBlockRegistryInstance> RegistryReference;
+
+	FQueuedThreadPool* PolygonizerThreadPool;
+	FQueuedThreadPool* WorldGeneratorThreadPool;
+
 private:
 	AVoxelChunkRender* CreateRenderActor();
 
@@ -74,6 +85,7 @@ public:
 
 	void Initialize();
 
+	UFUNCTION(BlueprintCallable)
 	void RegisterInvoker(AActor* Object, bool DoRender);
 
 	float GetVoxelSize();
@@ -81,14 +93,17 @@ public:
 
 	//It can create chunk
 	UVoxelChunk* GetChunkFromIndex(FIntVector Pos, bool DoLock = true);
+	UFUNCTION(BlueprintCallable)
 	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos, bool DoLock = true);
 
+	UFUNCTION(BlueprintCallable)
 	FIntVector WorldPosToVoxelPos(FVector Pos);
 
 	bool ShouldChunkRendered(UVoxelChunk* Chunk);
 	bool ShouldGenerateWorld(UVoxelChunk* Chunk);
 
 	void QueueWorldGeneration(UVoxelChunk* Chunk);
+	void QueuePolygonize(AVoxelChunkRender* Render);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
 };

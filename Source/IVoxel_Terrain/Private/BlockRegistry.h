@@ -6,9 +6,9 @@
 //Parameter is FName, FString, or FText
 #define GETBLOCK(x) FBlockRegistry::GetInstance_Ptr()->GetBlock(x)
 //Parameter is from TEXT(x) macro
-#define GETBLOCK_T(x) FBlockRegistry::GetInstance_Ptr()->GetBlock_(x);
+#define GETBLOCK_T(x) FBlockRegistry::GetInstance_Ptr()->GetBlock_(x)
 //Parameter is const char*
-#define GETBLOCK_C(x) GETBLOCK_T(TEXT(x));
+#define GETBLOCK_C(x) GETBLOCK_T(TEXT(x))
 
 class UBlock;
 

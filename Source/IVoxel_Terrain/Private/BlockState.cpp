@@ -17,6 +17,7 @@ FBlockState::FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block)
 
 UBlock* FBlockState::GetBlockDef()
 {
+	if (!BlockDef) BlockDef = GETBLOCK_T(TEXT("Air"));
 	return BlockDef;
 }
 

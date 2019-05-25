@@ -122,7 +122,7 @@ public:
 
 	static FIntVector PositionFromIndex(int Index)
 	{
-		int OriginalIndex = Index;
+		const int OriginalIndex = Index;
 
 		int Z = Index / (VOX_CHUNKSIZE*VOX_CHUNKSIZE);
 		Index -= Z * (VOX_CHUNKSIZE*VOX_CHUNKSIZE);
@@ -132,7 +132,7 @@ public:
 
 		FIntVector Result = FIntVector(X, Y, Z);
 		check(!VOX_IS_OUTOFLOCALPOS(Result));
-		check(VOX_CHUNK_AI(X, Y, Z) == OriginalIndex);
+		checkf((VOX_CHUNK_AI(X, Y, Z)) == OriginalIndex, TEXT("%d(%d,%d,%d) %d"), VOX_CHUNK_AI(X, Y, Z), X, Y, Z, OriginalIndex);
 		return Result;
 	}
 };
@@ -161,6 +161,7 @@ struct FVoxelPolygonizedSection
 	TArray<FVector> Normal;
 	TArray<FVector2D> UV;
 	TArray<FColor> Color;
+	UMaterialInterface* Material;
 };
 
 struct FVoxelPolygonizedData
@@ -194,7 +195,33 @@ public:
 
 	FIntVector GetChunkIndex();
 
+	FIntVector GetLocalPos();
+
 	UVoxelChunk* GetChunk();
+
 public:
 	int ArrayIndex();
+};
+
+struct FFaceVisiblityCache
+{
+	uint8 Data = 0;
+
+	bool IsThisFaceVisible(EBlockFace Face)
+	{
+		int N = 1 << static_cast<int>(Face);
+		return Data & N;
+	}
+	void SetFaceVisible(EBlockFace Face, bool Value)
+	{
+		int N = 1 << static_cast<int>(Face);
+		if (Value)
+		{
+			Data |= N;
+		}
+		else
+		{
+			Data &= ~N;
+		}
+	}
 };
