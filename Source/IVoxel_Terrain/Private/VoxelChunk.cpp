@@ -25,6 +25,7 @@ void UVoxelChunk::ChunkTick()
 	{
 		RenderDirty = true;
 		WorldGenState = EWorldGenState::DIRTYSET;
+		TrySetChunkState(EChunkState::CS_NoRender);
 	}
 
 	if (WorldGenState == EWorldGenState::NOT_GENERATED && World->ShouldGenerateWorld(this))
@@ -201,9 +202,36 @@ void UVoxelChunk::UpdateBlock(FBlockPos Pos)
 	}
 }
 
+void UVoxelChunk::GetAdjacentChunks(TArray<UVoxelChunk*>& Ret)
+{
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(1, 0, 0)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(-1, 0, 0)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 1, 0)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, -1, 0)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 0, -1)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 0, -1)));
+}
+
 bool UVoxelChunk::ShouldBeRendered()
 {
-	return World->ShouldChunkRendered(this) && WorldGenState >= EWorldGenState::GENERATED;
+	bool Result = WorldGenState >= EWorldGenState::GENERATED && World->ShouldChunkRendered(this);
+	if (Result)
+	{
+		//Check adjacent chunk's world is generated
+		TArray<UVoxelChunk*> AdjChunks;
+		GetAdjacentChunks(AdjChunks);
+		for (auto& Chunk : AdjChunks)
+		{
+			//If adjacent chunk's world is not generated
+			//Don't render now
+			if (Chunk->WorldGenState < EWorldGenState::GENERATED && Chunk->WorldGenState != EWorldGenState::NOT_GENERATED)
+			{
+				Result = false;
+				break;
+			}
+		}
+	}
+	return Result;
 }
 
 bool UVoxelChunk::ShouldBeTicked()

@@ -37,7 +37,7 @@ public:
 	int CreateChunkInterval;
 
 	UPROPERTY(EditAnywhere)
-	int WorldGeneratorThreads = 1;
+	int WorldGeneratorThreads = 2;
 
 	UPROPERTY(EditAnywhere)
 	int PolygonizerThreads = 2;

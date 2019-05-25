@@ -29,7 +29,6 @@ void FVoxelPolygonizer::DoPolygonize()
 	{
 		const FIntVector LocalPos = FIntVector(X, Y, Z);
 		FBlockPos BlockPos = FBlockPos(Chunk, LocalPos);
-		checkf(Chunk == BlockPos.GetChunk(), TEXT("%s"), *BlockPos.GetChunkIndex().ToString());
 		const auto ThisBlock = Chunk->GetBlockState(BlockPos);
 		const auto BlockDef = ThisBlock->GetBlockDef();
 

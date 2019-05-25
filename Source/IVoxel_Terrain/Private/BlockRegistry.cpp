@@ -1,4 +1,5 @@
 #include "BlockRegistry.h"
+#include "Engine/BlueprintGeneratedClass.h"
 
 TWeakPtr<FBlockRegistryInstance> FBlockRegistry::InstancePtr = TWeakPtr<FBlockRegistryInstance>();
 TArray<TWeakObjectPtr<UClass>> FBlockRegistry::BlockRegistry = TArray< TWeakObjectPtr<UClass>>();
@@ -17,6 +18,7 @@ FBlockRegistryInstance::FBlockRegistryInstance(TArray<UClass*> Registry)
 		Block->AddToRoot();
 
 		FName BlockName = Block->RegistryName;
+
 		if (!BlockName.IsValid())
 		{
 			UE_LOG(LogIVoxel, Error, TEXT("%s : RegistryName is not valid"), *Block->GetClass()->GetName());
@@ -51,7 +53,7 @@ UBlock* FBlockRegistryInstance::GetBlock(FName Name)
 	ensureMsgf(Find, TEXT("GetBlock(%s) failed"), *Name.ToString());
 #endif
 
-	return Find ? *Find : nullptr;
+	return Find ? *Find : GetBlock_(TEXT("Air"));
 }
 
 UBlock* FBlockRegistryInstance::GetBlock(FText Name)
@@ -67,15 +69,27 @@ UBlock* FBlockRegistryInstance::GetBlock(FString Name)
 void FBlockRegistry::ReloadBlocks()
 {
 	BlockRegistry.Empty();
+	
+	TArray<UObject*> Objs;
+
+	GetObjectsOfClass(UBlock::StaticClass(), Objs);
 
 	for (TObjectIterator<UClass> It; It; ++It)
 	{
-		if (It->IsChildOf(UBlock::StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract))
+		if (It->IsChildOf(UBlock::StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract) && !It->GetName().StartsWith(TEXT("SKEL_")))
 		{
-			BlockRegistry.Add(*It);
+			BlockRegistry.AddUnique(*It);
 		}
 	}
-
+	/*
+	for (TObjectIterator<UBlueprintGeneratedClass> It; It; ++It)
+	{
+		if (It->IsChildOf(UBlueprintBlock::StaticClass()) && !It->GetName().StartsWith(TEXT("SKEL_")))
+		{
+			UE_LOG(LogIVoxel, Warning, TEXT("%s %s"), *It->GetName(), *It->GetClass()->GetName());
+			BlockRegistry.AddUnique(*It);
+		}
+	}*/
 	UE_LOG(LogIVoxel, Warning, TEXT("Registered %d UBlock(s)"), BlockRegistry.Num());
 }
 

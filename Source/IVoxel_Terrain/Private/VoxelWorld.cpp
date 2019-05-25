@@ -112,8 +112,8 @@ void AVoxelWorld::FreeRenderActor(AVoxelChunkRender* RenderActor)
 void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
-	PolygonizerThreadPool->Create(PolygonizerThreads, 65536);
-	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 65536);
+	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048, EThreadPriority::TPri_BelowNormal);
+	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048);
 	VoxelSizeInit = VoxelSize;
 	WorldGeneratorInit = WorldGenerator.Get();
 	FBlockRegistry::ReloadBlocks();

@@ -94,6 +94,8 @@ public:
 
 	void UpdateBlock(FBlockPos Pos);
 
+	void GetAdjacentChunks(TArray<UVoxelChunk*>& Ret);
+
 	bool ShouldBeRendered();
 	bool ShouldBeTicked();
 	bool ShouldBeDeleted();

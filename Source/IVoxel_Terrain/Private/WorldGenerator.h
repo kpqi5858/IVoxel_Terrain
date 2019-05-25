@@ -2,7 +2,8 @@
 
 #include "VoxelWorld.h"
 #include "VoxelData.h"
-
+#include "FastNoise.h"
+#include "UFNBlueprintFunctionLibrary.h"
 #include "WorldGenerator.generated.h"
 
 class UVoxelChunk;
@@ -136,6 +137,41 @@ public:
 					FBlockPos Pos = FBlockPos(OwnerChunk, FIntVector(X, Y, Z));
 
 					SetBlockGen(Pos, GETBLOCK_C("Air"));
+				}
+			}
+		}
+	};
+};
+
+UCLASS()
+class U3DNoiseWorldGenerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+public:
+	virtual ~U3DNoiseWorldGenerator()
+	{
+	}
+
+	virtual void GenerateInternal() override
+	{
+		UUFNNoiseGenerator* NoiseGen = UUFNBlueprintFunctionLibrary::CreateNoiseGenerator(this, ENoiseType::Simplex, ECellularDistanceFunction::Euclidean, ECellularReturnType::CellValue, EFractalType::Billow, EInterp::InterpHermite, FMath::Rand(), 3, 0.1);
+		
+		for (int X = 0; X < VOX_CHUNKSIZE; X++)
+		{
+			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
+			{
+				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
+				{
+					FBlockPos Pos = FBlockPos(OwnerChunk, FIntVector(X, Y, Z));
+
+					if (NoiseGen->GetNoise3D(Pos.GlobalPos.X, Pos.GlobalPos.Y, Pos.GlobalPos.Z) < 0)
+					{
+						SetBlockGen(Pos, GETBLOCK_C("BPTest"));
+					}
+					else
+					{
+						SetBlockGen(Pos, GETBLOCK_C("Air"));
+					}
 				}
 			}
 		}
