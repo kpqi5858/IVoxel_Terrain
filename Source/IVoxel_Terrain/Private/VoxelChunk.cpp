@@ -23,7 +23,7 @@ void UVoxelChunk::ChunkTick()
 
 	if (WorldGenState == EWorldGenState::GENERATED)
 	{
-		RenderDirty = true;
+		SetRenderDirty();
 		WorldGenState = EWorldGenState::DIRTYSET;
 		TrySetChunkState(EChunkState::CS_NoRender);
 	}
@@ -32,6 +32,16 @@ void UVoxelChunk::ChunkTick()
 	{
 		WorldGenState = EWorldGenState::GENERATING;
 		World->QueueWorldGeneration(this);
+	}
+
+	if (!World->ShouldGenerateWorld(this))
+	{
+		if (HasRender())
+		{
+			DeInitRender();
+		}
+		World->UnloadChunk(this);
+		return;
 	}
 
 	if (ShouldBeRendered())
@@ -48,12 +58,12 @@ void UVoxelChunk::ChunkTick()
 
 	if (HasRender())
 	{
+		RenderActor->RenderTick();
 		if (RenderDirty && !RenderActor->IsPolygonizingNow())
 		{
 			RenderDirty = false;
 			World->QueuePolygonize(RenderActor);
 		}
-		RenderActor->RenderTick();
 	}
 }
 
@@ -130,6 +140,10 @@ void UVoxelChunk::TrySetChunkState(EChunkState NewState)
 	case EChunkState::CS_Rendered :
 	case EChunkState::CS_QueuedDeletion :
 	{
+		if (ChunkState == EChunkState::CS_Invalid)
+		{
+			SetRenderDirty();
+		}
 		ChunkState = NewState;
 		break;
 	}
@@ -162,12 +176,20 @@ FBlockState* UVoxelChunk::GetBlockState(FBlockPos Pos)
 	return BlockStateStorage->Get(Pos.ArrayIndex());
 }
 
+void UVoxelChunk::ModifyBlockState(FBlockPos Pos, StateModifyFunction Func, bool SetDirty)
+{
+	FBlockState* State = GetBlockState(Pos);
+	Func(State);
+	if (SetDirty)
+	{
+		SetRenderDirty();
+		UpdateBlock(Pos);
+	}
+}
+
 void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 {
-	check(Pos.GetChunk() == this);
-	SetRenderDirty();
-	GetBlockState(Pos)->SetBlockDef(Block);
-	UpdateBlock(Pos);
+	ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
 }
 
 FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos Pos)

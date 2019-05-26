@@ -12,7 +12,6 @@ AVoxelWorld::AVoxelWorld()
 	PrimaryActorTick.bHighPriority = true;
 	PolygonizerThreadPool = FQueuedThreadPool::Allocate();
 	WorldGeneratorThreadPool = FQueuedThreadPool::Allocate();
-
 }
 
 void AVoxelWorld::BeginPlay()
@@ -34,9 +33,16 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 	InternalTicks++;
 
 	//Remove invalid invokers
-	InvokersList.RemoveAll([](FVoxelInvoker& VoxelInvoker)
+	InvokersList.RemoveAllSwap([](FVoxelInvoker& VoxelInvoker)
 	{
 		return !VoxelInvoker.IsValid();
+	});
+
+	WaitingRender.RemoveAllSwap([&](AVoxelChunkRender* Render)
+	{
+		bool Result = !Render->IsPolygonizingNow();
+		if (Result) FreeRender.Add(Render);
+		return Result;
 	});
 
 	//Create chunks around invokers
@@ -60,23 +66,52 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 				//Already locked LoadedChunk
 				UVoxelChunk* Chunk = GetChunkFromIndex(FIntVector(X, Y, Z), false);
 
-				Chunk->TrySetChunkState(EChunkState::CS_NoRender);
+				LoadChunk(Chunk);
 			}
 		}
 	}
 
 	//Tick loaded chunks
-	TArray<UVoxelChunk*> ToTick;
-	ToTick.Reserve(LoadedChunk.Num());
+	auto CopyTickList = TickListCache;
 
-	LoadedChunk.GenerateValueArray(ToTick);
-	for (auto& Chunk : ToTick)
+	for (auto& Chunk : CopyTickList)
 	{
 		if (Chunk->ShouldBeTicked())
 		{
 			Chunk->ChunkTick();
 		}
 	}
+}
+
+void AVoxelWorld::RegisterTickList(UVoxelChunk* Chunk)
+{
+	//Tick list related should be not multithreaded
+	check(IsInGameThread());
+	TickListCache.Add(Chunk);
+}
+
+void AVoxelWorld::DeregisterTickList(UVoxelChunk* Chunk)
+{
+	check(IsInGameThread());
+	check(TickListCache.Contains(Chunk));
+	TickListCache.Remove(Chunk);
+}
+
+void AVoxelWorld::UnloadChunk(UVoxelChunk* Chunk)
+{
+	DeregisterTickList(Chunk);
+	InactiveChunkList.Add(Chunk);
+	Chunk->TrySetChunkState(EChunkState::CS_Invalid);
+}
+
+void AVoxelWorld::LoadChunk(UVoxelChunk* Chunk)
+{
+	if (InactiveChunkList.Contains(Chunk))
+	{
+		InactiveChunkList.Remove(Chunk);
+	}
+	RegisterTickList(Chunk);
+	Chunk->TrySetChunkState(EChunkState::CS_NoRender);
 }
 
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
@@ -105,15 +140,16 @@ AVoxelChunkRender* AVoxelWorld::GetFreeRenderActor()
 
 void AVoxelWorld::FreeRenderActor(AVoxelChunkRender* RenderActor)
 {
+	//Chunk maybe polygonizing now
 	check(!RenderActor->IsInitialized());
-	FreeRender.Push(RenderActor);
+	WaitingRender.Push(RenderActor);
 }
 
 void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
-	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048, EThreadPriority::TPri_BelowNormal);
-	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048);
+	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048);
+	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048, EThreadPriority::TPri_AboveNormal);
 	VoxelSizeInit = VoxelSize;
 	WorldGeneratorInit = WorldGenerator.Get();
 	FBlockRegistry::ReloadBlocks();
@@ -123,6 +159,17 @@ void AVoxelWorld::Initialize()
 		UE_LOG(LogIVoxel, Error, TEXT("World generator is null"));
 		WorldGeneratorInit = UFlatWorldGenerator::StaticClass();
 	}
+
+	FIntVector Temp = RenderChunkSize * 2;
+
+	//Create render chunks now
+	int NumToCreate = Temp.X * Temp.Y * Temp.Z;
+	NumToCreate += (NumToCreate / 4);
+	for (int i = 0; i < NumToCreate; i++)
+	{
+		FreeRender.Add(CreateRenderActor());
+	}
+
 	IsInitialized = true;
 }
 
@@ -200,8 +247,8 @@ bool AVoxelWorld::ShouldChunkRendered(UVoxelChunk* Chunk)
 			PosDifference.Z = FMath::Abs(PosDifference.Z);
 
 			if (PosDifference.X <= RenderChunkSize.X
-				|| PosDifference.Y <= RenderChunkSize.Y
-				|| PosDifference.Z <= RenderChunkSize.Z)
+				&& PosDifference.Y <= RenderChunkSize.Y
+				&& PosDifference.Z <= RenderChunkSize.Z)
 			{
 				Result = true;
 				break;
@@ -211,7 +258,7 @@ bool AVoxelWorld::ShouldChunkRendered(UVoxelChunk* Chunk)
 	return Result;
 }
 
-bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk * Chunk)
+bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk* Chunk)
 {
 	bool Result = false;
 
@@ -228,8 +275,8 @@ bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk * Chunk)
 			PosDifference.Z = FMath::Abs(PosDifference.Z);
 
 			if (PosDifference.X <= MaxDifference.X
-				|| PosDifference.Y <= MaxDifference.Y
-				|| PosDifference.Z <= MaxDifference.Z)
+				&& PosDifference.Y <= MaxDifference.Y
+				&& PosDifference.Z <= MaxDifference.Z)
 			{
 				Result = true;
 				break;

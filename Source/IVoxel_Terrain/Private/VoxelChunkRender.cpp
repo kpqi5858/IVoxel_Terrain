@@ -10,6 +10,8 @@ AVoxelChunkRender::AVoxelChunkRender()
 
 void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 {
+	check(!Initialized);
+
 	TheChunk = Chunk;
 	Initialized = true;
 	RMC->SetVisibility(true);
@@ -19,11 +21,12 @@ void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 
 void AVoxelChunkRender::DestroyRender()
 {
+	check(Initialized);
+
 	RMC->ClearAllMeshSections();
 	RMC->SetVisibility(false);
 	TheChunk = nullptr;
 	Initialized = false;
-	delete Polygonizer;
 }
 
 bool AVoxelChunkRender::IsInitialized()
@@ -33,6 +36,10 @@ bool AVoxelChunkRender::IsInitialized()
 
 bool AVoxelChunkRender::IsPolygonizingNow()
 {
+	if (Polygonizer->IsDone())
+	{
+		IsPolygonizing = false;
+	}
 	return IsPolygonizing;
 }
 
@@ -48,6 +55,9 @@ void AVoxelChunkRender::RenderTick()
 
 void AVoxelChunkRender::Polygonize()
 {
+	//Polygonizer thread is still remaining after deiniting this
+	if (!Initialized) return;
+
 	if (IsPolygonizing) return;
 	IsPolygonizing = true;
 	Polygonizer->DoPolygonize();

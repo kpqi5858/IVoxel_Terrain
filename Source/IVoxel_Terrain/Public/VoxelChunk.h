@@ -15,6 +15,8 @@ template<typename T>
 class TAbstractBlockStorage;
 struct FBlockPos;
 
+typedef TFunction<void(FBlockState*)> StateModifyFunction;
+
 UENUM(BlueprintType)
 enum class EChunkState : uint8
 {
@@ -86,7 +88,9 @@ public:
 
 	bool IsValidChunk();
 
-    FBlockState* GetBlockState(FBlockPos Pos);
+	FBlockState* GetBlockState(FBlockPos Pos);
+	void ModifyBlockState(FBlockPos Pos, StateModifyFunction Func, bool SetDirty = true);
+
 	UFUNCTION(BlueprintCallable)
 	void SetBlock(FBlockPos Pos, UBlock* Block);
 

@@ -5,7 +5,7 @@
 class IVOXEL_TERRAIN_API FVoxelPolygonizer
 {
 private:
-	UVoxelChunk* Chunk;
+	UVoxelChunk* Chunk = nullptr;
 	FVoxelPolygonizedData* PolygonizedData = nullptr;
 
 	bool IsFinished = false;

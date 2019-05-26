@@ -46,12 +46,18 @@ private:
 	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> LoadedChunk;
 
+	TSet<UVoxelChunk*> TickListCache;
+
+	TSet<UVoxelChunk*> InactiveChunkList;
+
 	FCriticalSection LoadedChunkLock;
 
 	TArray<FVoxelInvoker> InvokersList;
 
 	UPROPERTY()
 	TArray<AVoxelChunkRender*> FreeRender;
+
+	TArray<AVoxelChunkRender*> WaitingRender;
 
 	UClass* WorldGeneratorInit;
 
@@ -79,6 +85,12 @@ public:
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void Tick(float DeltaSeconds) override;
+
+	void RegisterTickList(UVoxelChunk* Chunk);
+	void DeregisterTickList(UVoxelChunk* Chunk);
+
+	void UnloadChunk(UVoxelChunk* Chunk);
+	void LoadChunk(UVoxelChunk* Chunk);
 
 	AVoxelChunkRender* GetFreeRenderActor();
 	void FreeRenderActor(AVoxelChunkRender* RenderActor);
