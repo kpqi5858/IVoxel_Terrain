@@ -30,7 +30,7 @@ public:
 	float VoxelSize;
 
 	UPROPERTY(EditAnywhere)
-	TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
+	TSubclassOf<UVoxelWorldGenerator> WorldGeneratorClass;
 
 	//How frequent invokers creating/updating chunks
 	UPROPERTY(EditAnywhere)
@@ -46,11 +46,13 @@ private:
 	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> LoadedChunk;
 
+	TMap<FIntVector, UVoxelChunk*> LoadedChunk_Internal;
+
 	TSet<UVoxelChunk*> TickListCache;
 
 	TSet<UVoxelChunk*> InactiveChunkList;
 
-	FCriticalSection LoadedChunkLock;
+	FRWLock LoadedChunkLock;
 
 	TArray<FVoxelInvoker> InvokersList;
 
@@ -59,7 +61,8 @@ private:
 
 	TArray<AVoxelChunkRender*> WaitingRender;
 
-	UClass* WorldGeneratorInit;
+	UPROPERTY()
+	UVoxelWorldGenerator* InstancedWorldGenerator = nullptr;
 
 	bool IsInitialized;
 
@@ -71,13 +74,15 @@ private:
 
 	FQueuedThreadPool* PolygonizerThreadPool;
 	FQueuedThreadPool* WorldGeneratorThreadPool;
+	
+	bool PrimeUpdated = false;
 
 private:
 	AVoxelChunkRender* CreateRenderActor();
 
 	UVoxelChunk* CreateVoxelChunk(FIntVector Index);
 
-	UVoxelChunk* GetChunkFromIndex_Internal(FIntVector Pos);
+	UVoxelChunk* GetChunkFromIndex_Internal(FIntVector Pos, bool DoLock);
 public:
 	AVoxelWorld();
 
@@ -103,6 +108,8 @@ public:
 	float GetVoxelSize();
 	UClass* GetWorldGeneratorClass();
 
+	UVoxelWorldGenerator* GetWorldGenerator();
+
 	//It can create chunk
 	UVoxelChunk* GetChunkFromIndex(FIntVector Pos, bool DoLock = true);
 	UFUNCTION(BlueprintCallable)
@@ -115,7 +122,11 @@ public:
 	bool ShouldGenerateWorld(UVoxelChunk* Chunk);
 
 	void QueueWorldGeneration(UVoxelChunk* Chunk);
+	void QueuePostWorldGeneration(UVoxelChunk* Chunk);
+
 	void QueuePolygonize(AVoxelChunkRender* Render);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
+
+	bool ShouldUpdatePrime();
 };

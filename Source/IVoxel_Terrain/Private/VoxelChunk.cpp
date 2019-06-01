@@ -21,17 +21,22 @@ void UVoxelChunk::ChunkTick()
 	//Invalid chunk should not be ticked
 	check(CurrentState != EChunkState::CS_Invalid);
 
-	if (WorldGenState == EWorldGenState::GENERATED)
+	if (PrimeGenerated == 1 && World->ShouldUpdatePrime())
 	{
-		SetRenderDirty();
+		PrimeGenerated = 2;
+		ProcessPrimeChunk();
 		WorldGenState = EWorldGenState::DIRTYSET;
-		TrySetChunkState(EChunkState::CS_NoRender);
 	}
 
 	if (WorldGenState == EWorldGenState::NOT_GENERATED && World->ShouldGenerateWorld(this))
 	{
 		WorldGenState = EWorldGenState::GENERATING;
 		World->QueueWorldGeneration(this);
+	}
+
+	if (ShouldPostGenerate())
+	{
+		World->QueuePostWorldGeneration(this);
 	}
 
 	if (!World->ShouldGenerateWorld(this))
@@ -71,8 +76,8 @@ void UVoxelChunk::Initialize(AVoxelWorld* VoxelWorld, FIntVector ChunkIndex)
 {
 	ChunkPosition = ChunkIndex;
 	World = VoxelWorld;
-	WorldGenerator = NewObject<UVoxelWorldGenerator>(this, VoxelWorld->GetWorldGeneratorClass());
-	WorldGenerator->Setup(this);
+
+	WorldGenerator = VoxelWorld->GetWorldGenerator();
 
 	FaceVisiblityCache = MakeShareable(new TBasicAbstractBlockStorage<FFaceVisiblityCache>());
 	FaceVisiblityCache->Initialize();
@@ -108,8 +113,23 @@ bool UVoxelChunk::HasRender()
 void UVoxelChunk::GenerateWorld()
 {
 	check(WorldGenerator);
+	WorldGenerator->GeneratePrime(this);
+	PrimeGenerated = 1;
+}
 
-	WorldGenerator->Generate();
+void UVoxelChunk::PostGenerateWorld()
+{
+	WorldGenerator->PostGenerate(this);
+	PostGeneration = 1;
+	SetRenderDirty();
+}
+
+void UVoxelChunk::ProcessPrimeChunk()
+{
+	for (int Index = 0; Index < VOX_CHUNKSIZE_ARRAY; Index++)
+	{
+		SetBlock(FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index)), PrimeChunk.Blocks[Index]);
+	}
 }
 
 void UVoxelChunk::BlockStateStorageLock()
@@ -170,13 +190,13 @@ bool UVoxelChunk::IsValidChunk()
 	return ChunkState != EChunkState::CS_Invalid && ChunkState != EChunkState::CS_QueuedDeletion;
 }
 
-FBlockState* UVoxelChunk::GetBlockState(FBlockPos Pos)
+FBlockState* UVoxelChunk::GetBlockState(FBlockPos& Pos)
 {
 	check(Pos.GetChunk() == this);
 	return BlockStateStorage->Get(Pos.ArrayIndex());
 }
 
-void UVoxelChunk::ModifyBlockState(FBlockPos Pos, StateModifyFunction Func, bool SetDirty)
+void UVoxelChunk::ModifyBlockState(FBlockPos& Pos, StateModifyFunction Func, bool SetDirty)
 {
 	FBlockState* State = GetBlockState(Pos);
 	Func(State);
@@ -189,16 +209,18 @@ void UVoxelChunk::ModifyBlockState(FBlockPos Pos, StateModifyFunction Func, bool
 
 void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 {
+	UBlock* Old = GetBlockState(Pos)->GetBlockDef();
+	if (Old == Block) return;
 	ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
 }
 
-FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos Pos)
+FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)
 {
 	check(Pos.GetChunk() == this);
 	return *FaceVisiblityCache->Get(Pos.ArrayIndex());
 }
 
-void UVoxelChunk::UpdateBlock(FBlockPos Pos)
+void UVoxelChunk::UpdateBlock(FBlockPos& Pos)
 {
 	//Update FaceVisiblityCache
 
@@ -207,20 +229,23 @@ void UVoxelChunk::UpdateBlock(FBlockPos Pos)
 	UBlock* BlockDef = BlockState->GetBlockDef();
 
 	FaceCache.Data = 0;
-	const EBlockFace AllFaces[6] = { EBlockFace::FRONT, EBlockFace::BACK, EBlockFace::LEFT, EBlockFace::RIGHT, EBlockFace::TOP, EBlockFace::BOTTOM };
+	constexpr EBlockFace AllFaces[6] = { EBlockFace::FRONT, EBlockFace::BACK, EBlockFace::LEFT, EBlockFace::RIGHT, EBlockFace::TOP, EBlockFace::BOTTOM };
 
 	for (auto Face : AllFaces)
 	{
 		FBlockPos NextPos = FBlockPos(Pos);
 		NextPos.GlobalPos += FVoxelUtilities::GetFaceOffset(Face);
-		FBlockState* NextState = NextPos.GetChunk()->GetBlockState(NextPos);
+		UVoxelChunk* NChunk = NextPos.GetChunk();
+		FBlockState* NextState = NChunk->GetBlockState(NextPos);
 		UBlock* NextBlockDef = NextState->GetBlockDef();
 
-		bool Visible = BlockDef->IsFaceVisible(Face) != NextBlockDef->IsFaceVisible(FVoxelUtilities::GetOppositeFace(Face));
+		const bool ThisVisible = BlockDef->IsFaceVisible(Face);
+		const bool OppoVisible = NextBlockDef->IsFaceVisible(FVoxelUtilities::GetOppositeFace(Face));
+		const bool Visible = ThisVisible != OppoVisible;
 
-		NextPos.GetChunk()->GetFaceVisiblityCache(NextPos).SetFaceVisible(FVoxelUtilities::GetOppositeFace(Face), Visible);
-		NextPos.GetChunk()->SetRenderDirty();
-		FaceCache.SetFaceVisible(Face, Visible);
+		if (NChunk->GetFaceVisiblityCache(NextPos).SetFaceVisible(FVoxelUtilities::GetOppositeFace(Face), Visible && OppoVisible))
+			NChunk->SetRenderDirty();
+		FaceCache.SetFaceVisible(Face, Visible && ThisVisible);
 	}
 }
 
@@ -230,13 +255,25 @@ void UVoxelChunk::GetAdjacentChunks(TArray<UVoxelChunk*>& Ret)
 	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(-1, 0, 0)));
 	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 1, 0)));
 	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, -1, 0)));
+	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 0, 1)));
 	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 0, -1)));
-	Ret.Add(World->GetChunkFromIndex(ChunkPosition + FIntVector(0, 0, -1)));
+}
+
+void UVoxelChunk::GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret)
+{
+	for (int X = -1; X <= 1; X++)
+	for (int Y = -1; Y <= 1; Y++)
+	for (int Z = -1; Z <= 1; Z++)
+	{
+		if (X == 0 && Y == 0 && Z == 0) continue;
+		FIntVector Pos = FIntVector(X, Y, Z);
+		Ret.Add(World->GetChunkFromIndex(Pos + ChunkPosition));
+	}
 }
 
 bool UVoxelChunk::ShouldBeRendered()
 {
-	bool Result = WorldGenState >= EWorldGenState::GENERATED && World->ShouldChunkRendered(this);
+	bool Result = WorldGenState >= EWorldGenState::GENERATED && World->ShouldChunkRendered(this) && PostGeneration;
 	if (Result)
 	{
 		//Check adjacent chunk's world is generated
@@ -244,9 +281,9 @@ bool UVoxelChunk::ShouldBeRendered()
 		GetAdjacentChunks(AdjChunks);
 		for (auto& Chunk : AdjChunks)
 		{
-			//If adjacent chunk's world is not generated
+			//If adjacent chunk's world is not fully generated
 			//Don't render now
-			if (Chunk->WorldGenState < EWorldGenState::GENERATED && Chunk->WorldGenState != EWorldGenState::NOT_GENERATED)
+			if (!Chunk->PostGeneration)
 			{
 				Result = false;
 				break;
@@ -267,6 +304,27 @@ bool UVoxelChunk::ShouldBeDeleted()
 	return false;
 }
 
+bool UVoxelChunk::ShouldPostGenerate()
+{
+	if (PrimeGenerated == 2 && !PostGeneration)
+	{
+		bool Result = true;
+		TArray<UVoxelChunk*> AdjChunks;
+		GetAdjacentChunks_Corner(AdjChunks);
+		for (auto& Chunk : AdjChunks)
+		{
+			//If adjacent chunk's world is not generated
+			if (Chunk->WorldGenState < EWorldGenState::GENERATED)
+			{
+				Result = false;
+				break;
+			}
+		}
+		return Result;
+	}
+	return false;
+}
+
 AVoxelWorld* UVoxelChunk::GetVoxelWorld()
 {
 	return World;
@@ -280,11 +338,6 @@ FIntVector UVoxelChunk::GetChunkPosition()
 AVoxelChunkRender* UVoxelChunk::GetRender()
 {
 	return RenderActor;
-}
-
-void UVoxelChunk::SetRenderDirty()
-{
-	RenderDirty = true;
 }
 
 FIntVector UVoxelChunk::LocalToGlobalPosition(FIntVector LocalPos)
@@ -303,4 +356,13 @@ FIntVector UVoxelChunk::GlobalToLocalPosition(FIntVector GlobalPos)
 FVector UVoxelChunk::GetWorldPosition()
 {
 	return FVector(GetGlobalPosition_Min()) * World->GetVoxelSize();
+}
+
+UPrimeChunk::UPrimeChunk()
+{
+}
+
+void UPrimeChunk::SetBlockDef(int X, int Y, int Z, UBlock* Block)
+{
+	Blocks[VOX_CHUNK_AI(X, Y, Z)] = Block;
 }

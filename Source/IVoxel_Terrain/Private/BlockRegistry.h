@@ -39,6 +39,7 @@ class IVOXEL_TERRAIN_API FBlockRegistry
 private:
 	static TWeakPtr<FBlockRegistryInstance> InstancePtr;
 	static TArray<TWeakObjectPtr<UClass>> BlockRegistry;
+	static FBlockRegistryInstance* InstancePtrRaw;
 
 public:
 	//Iterates every class that inherits UBlock, and add to registry

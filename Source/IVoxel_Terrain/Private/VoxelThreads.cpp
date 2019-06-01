@@ -31,3 +31,19 @@ void FWorldGeneratorThread::Abandon()
 {
 	delete this;
 }
+
+FPostWorldGeneratorThread::FPostWorldGeneratorThread(UVoxelChunk* Chunk)
+	: Chunk(Chunk)
+{
+}
+
+void FPostWorldGeneratorThread::DoThreadedWork()
+{
+	Chunk->PostGenerateWorld();
+	delete this;
+}
+
+void FPostWorldGeneratorThread::Abandon()
+{
+	delete this;
+}

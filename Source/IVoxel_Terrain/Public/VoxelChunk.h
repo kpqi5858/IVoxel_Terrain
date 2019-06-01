@@ -40,6 +40,16 @@ enum class EWorldGenState : uint8
 	DIRTYSET
 };
 
+class IVOXEL_TERRAIN_API UPrimeChunk
+{
+public:
+	UBlock* Blocks[VOX_CHUNKSIZE_ARRAY];
+
+	UPrimeChunk();
+
+	void SetBlockDef(int X, int Y, int Z, UBlock* Block);
+};
+
 UCLASS(Blueprintable)
 class IVOXEL_TERRAIN_API UVoxelChunk : public UObject
 {
@@ -69,6 +79,12 @@ public:
 
 	EWorldGenState WorldGenState = EWorldGenState::NOT_GENERATED;
 
+	UPrimeChunk PrimeChunk;
+
+	int PrimeGenerated = 0;
+
+	int PostGeneration = 0;
+
 public:
     UVoxelChunk();
 
@@ -81,6 +97,9 @@ public:
 	bool HasRender();
 
 	void GenerateWorld();
+	void PostGenerateWorld();
+
+	void ProcessPrimeChunk();
 
 	//Only lock when your operation is not in game thread
 	void BlockStateStorageLock();
@@ -88,21 +107,23 @@ public:
 
 	bool IsValidChunk();
 
-	FBlockState* GetBlockState(FBlockPos Pos);
-	void ModifyBlockState(FBlockPos Pos, StateModifyFunction Func, bool SetDirty = true);
+	FBlockState* GetBlockState(FBlockPos& Pos);
+	inline void ModifyBlockState(FBlockPos& Pos, StateModifyFunction Func, bool SetDirty = true);
 
 	UFUNCTION(BlueprintCallable)
 	void SetBlock(FBlockPos Pos, UBlock* Block);
 
-	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos Pos);
+	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos& Pos);
 
-	void UpdateBlock(FBlockPos Pos);
+	inline void UpdateBlock(FBlockPos& Pos);
 
 	void GetAdjacentChunks(TArray<UVoxelChunk*>& Ret);
+	void GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret);
 
 	bool ShouldBeRendered();
 	bool ShouldBeTicked();
 	bool ShouldBeDeleted();
+	bool ShouldPostGenerate();
 
 //Chunk state related functions
 public:
@@ -117,7 +138,10 @@ public:
 
     AVoxelChunkRender* GetRender();
 
-	void SetRenderDirty();
+	inline void SetRenderDirty()
+	{
+		RenderDirty = true;
+	};
 
 	inline FIntVector GetGlobalPosition_Min()
 	{

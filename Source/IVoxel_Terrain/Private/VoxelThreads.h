@@ -23,3 +23,14 @@ public:
 	void DoThreadedWork() override;
 	void Abandon() override;
 };
+
+class FPostWorldGeneratorThread : public IQueuedWork
+{
+public:
+	FPostWorldGeneratorThread(UVoxelChunk* Chunk);
+
+	UVoxelChunk* Chunk;
+
+	void DoThreadedWork() override;
+	void Abandon() override;
+};

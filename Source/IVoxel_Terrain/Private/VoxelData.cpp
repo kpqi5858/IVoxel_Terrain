@@ -45,7 +45,7 @@ FIntVector FBlockPos::GetChunkIndex()
 FIntVector FBlockPos::GetLocalPos()
 {
 	//Wtf c++ implementation is different from python implementation
-	auto CustomModulo = [](int Val, int Div) {int Result = Val % Div; return Result < 0 ? Result + Div : Result; };
+	auto CustomModulo = [](int& Val, int Div) {const int Result = Val % Div; return Result < 0 ? Result + Div : Result; };
 	return FIntVector(CustomModulo(GlobalPos.X, VOX_CHUNKSIZE)
 		, CustomModulo(GlobalPos.Y, VOX_CHUNKSIZE)
 		, CustomModulo(GlobalPos.Z, VOX_CHUNKSIZE));

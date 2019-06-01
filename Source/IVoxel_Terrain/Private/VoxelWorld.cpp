@@ -45,11 +45,13 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 		return Result;
 	});
 
+	PrimeUpdated = false;
+
 	//Create chunks around invokers
 	//And lock LoadedChunk
 	if (InternalTicks % CreateChunkInterval == 0)
 	{
-		FScopeLock Lock(&LoadedChunkLock);
+		FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
 
 		for (auto& Invoker : InvokersList)
 		{
@@ -70,6 +72,8 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 			}
 		}
 	}
+
+	check(RegistryReference.IsValid());
 
 	//Tick loaded chunks
 	auto CopyTickList = TickListCache;
@@ -151,14 +155,10 @@ void AVoxelWorld::Initialize()
 	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048);
 	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048, EThreadPriority::TPri_AboveNormal);
 	VoxelSizeInit = VoxelSize;
-	WorldGeneratorInit = WorldGenerator.Get();
 	FBlockRegistry::ReloadBlocks();
 	RegistryReference = FBlockRegistry::GetInstance();
-	if (!WorldGenerator)
-	{
-		UE_LOG(LogIVoxel, Error, TEXT("World generator is null"));
-		WorldGeneratorInit = UFlatWorldGenerator::StaticClass();
-	}
+
+	InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>(this, GetWorldGeneratorClass());
 
 	FIntVector Temp = RenderChunkSize * 2;
 
@@ -186,11 +186,22 @@ float AVoxelWorld::GetVoxelSize()
 
 UClass* AVoxelWorld::GetWorldGeneratorClass()
 {
-	check(IsInitialized)
-	return WorldGeneratorInit;
+	auto TheClass = WorldGeneratorClass.Get();
+	if (!TheClass)
+	{
+		UE_LOG(LogIVoxel, Error, TEXT("World generator is null"));
+		TheClass = UFlatWorldGenerator::StaticClass();
+	}
+	return TheClass;
 }
 
-UVoxelChunk* AVoxelWorld::GetChunkFromIndex_Internal(FIntVector Pos)
+UVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
+{
+	check(IsInitialized);
+	return InstancedWorldGenerator;
+}
+
+UVoxelChunk* AVoxelWorld::GetChunkFromIndex_Internal(FIntVector Pos, bool DoLock)
 {
 	check(IsInitialized);
 
@@ -206,16 +217,35 @@ UVoxelChunk* AVoxelWorld::GetChunkFromIndex_Internal(FIntVector Pos)
 
 UVoxelChunk* AVoxelWorld::GetChunkFromIndex(FIntVector Pos, bool DoLock)
 {
+	check(IsInitialized);
 	if (DoLock)
 	{
-		FScopeLock Lock(&LoadedChunkLock);
-		return GetChunkFromIndex_Internal(Pos);
+		{
+			FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_ReadOnly);
+			auto Find = LoadedChunk.Find(Pos);
+			if (Find) return *Find;
+		}
+		FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
+
+		auto Chunk = CreateVoxelChunk(Pos);
+		LoadedChunk.Add(Pos, Chunk);
+		return Chunk;
 	}
 	else
 	{
-		return GetChunkFromIndex_Internal(Pos);
+		auto Find = LoadedChunk.Find(Pos);
+		if (Find) return *Find;
+
+		else
+		{
+			auto Chunk = CreateVoxelChunk(Pos);
+			LoadedChunk.Add(Pos, Chunk);
+			return Chunk;
+		}
+
 	}
 }
+
 
 UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos, bool DoLock)
 {
@@ -291,6 +321,11 @@ void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
 	WorldGeneratorThreadPool->AddQueuedWork(new FWorldGeneratorThread(Chunk));
 }
 
+void AVoxelWorld::QueuePostWorldGeneration(UVoxelChunk* Chunk)
+{
+	WorldGeneratorThreadPool->AddQueuedWork(new FPostWorldGeneratorThread(Chunk));
+}
+
 void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)
 {
 	PolygonizerThreadPool->AddQueuedWork(new FVoxelPolygonizerThread(Render));
@@ -310,4 +345,14 @@ float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
 		}
 	}
 	return MinDist;
+}
+
+bool AVoxelWorld::ShouldUpdatePrime()
+{
+	if (!PrimeUpdated)
+	{
+		PrimeUpdated = true;
+		return true;
+	}
+	return false;
 }

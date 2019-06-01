@@ -3,6 +3,7 @@
 
 TWeakPtr<FBlockRegistryInstance> FBlockRegistry::InstancePtr = TWeakPtr<FBlockRegistryInstance>();
 TArray<TWeakObjectPtr<UClass>> FBlockRegistry::BlockRegistry = TArray< TWeakObjectPtr<UClass>>();
+FBlockRegistryInstance* FBlockRegistry::InstancePtrRaw = nullptr;
 
 FBlockRegistryInstance::FBlockRegistryInstance()
 {
@@ -114,6 +115,7 @@ TSharedPtr<FBlockRegistryInstance> FBlockRegistry::GetInstance()
 	{
 		TSharedPtr<FBlockRegistryInstance> Inst = MakeShareable(new FBlockRegistryInstance(GetBlockRegistryClasses()));
 		InstancePtr = Inst;
+		InstancePtrRaw = Inst.Get();
 		return Inst;
 	}
 }
@@ -121,5 +123,5 @@ TSharedPtr<FBlockRegistryInstance> FBlockRegistry::GetInstance()
 FBlockRegistryInstance* FBlockRegistry::GetInstance_Ptr()
 {
 	checkf(InstancePtr.IsValid(), TEXT("GetInstance_Ptr called with no reference"));
-	return InstancePtr.Pin().Get();
+	return InstancePtrRaw;
 }
