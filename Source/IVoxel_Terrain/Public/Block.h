@@ -28,17 +28,15 @@ public:
 		return nullptr;
 	};
 
-	virtual bool IsOpaque()
+	//0 : Invisible, like Air block
+	//1~: Different opaque type makes face visible
+	virtual int OpaqueType()
 	{
 		return false;
 	};
 
+	//Is this block has collision?
 	virtual bool IsSolid()
-	{
-		return false;
-	};
-
-	virtual bool IsFaceVisible(EBlockFace Face)
 	{
 		return false;
 	};
@@ -59,9 +57,8 @@ public:
 		return nullptr;
 	}
 
-	virtual bool IsOpaque() override { return false; };
+	virtual int OpaqueType() override { return 0; };
 	virtual bool IsSolid() override { return false; };
-	virtual bool IsFaceVisible(EBlockFace Face) override { return false; };
 };
 
 UCLASS()
@@ -79,9 +76,8 @@ public:
 		return nullptr;
 	}
 
-	virtual bool IsOpaque() override { return true; };
-	virtual bool IsSolid() override { return true; };
-	virtual bool IsFaceVisible(EBlockFace Face) override { return true; };
+	virtual int OpaqueType() override { return 1; };
+	virtual bool IsSolid() override { return false; };
 };
 
 UCLASS(Blueprintable, Abstract)
@@ -95,31 +91,18 @@ public:
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* MaterialToUse;
 
+	UPROPERTY(EditAnywhere)
+	int OpaqueTypeBP = 0;
+
+	UPROPERTY(EditAnywhere)
+	bool bSolid = false;
+
 	virtual UMaterialInterface* GetMaterial() override
 	{
 		return MaterialToUse;
 	}
 
-	UFUNCTION(BlueprintNativeEvent)
-	bool IsOpaque_B();
-	bool IsOpaque_B_Implementation()
-	{
-		return false;
-	};
-	UFUNCTION(BlueprintNativeEvent)
-	bool IsSolid_B();
-	bool IsSolid_B_Implementation()
-	{
-		return false;
-	};
-	UFUNCTION(BlueprintNativeEvent)
-	bool IsFaceVisible_B(EBlockFace Face);
-	bool IsFaceVisible_B_Implementation(EBlockFace Face)
-	{
-		return false;
-	};
-
-	virtual bool IsOpaque() override { return IsOpaque_B(); };
-	virtual bool IsSolid() override { return IsSolid_B(); };
-	virtual bool IsFaceVisible(EBlockFace Face) override { return IsFaceVisible_B(Face); };
+	
+	virtual int OpaqueType() override { return OpaqueTypeBP; };
+	virtual bool IsSolid() override { return bSolid; };
 };

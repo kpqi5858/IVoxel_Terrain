@@ -189,25 +189,25 @@ public:
 
 	FBlockPos(AVoxelWorld* VoxelWorld, FIntVector GlobalPosition);
 
-	FIntVector GetGlobalPosition();
+	FIntVector GetGlobalPosition() const;
 	
-	AVoxelWorld* GetWorld();
+	AVoxelWorld* GetWorld() const;
 
-	FIntVector GetChunkIndex();
+	FIntVector GetChunkIndex() const;
 
-	FIntVector GetLocalPos();
+	FIntVector GetLocalPos() const;
 
-	UVoxelChunk* GetChunk();
+	UVoxelChunk* GetChunk() const;
 
 public:
-	int ArrayIndex();
+	int ArrayIndex() const;
 };
 
 struct FFaceVisiblityCache
 {
 	uint32 Data = 0;
 
-	FORCEINLINE bool IsThisFaceVisible(EBlockFace Face)
+	FORCEINLINE bool IsThisFaceVisible(EBlockFace Face) const
 	{
 		uint32 N = 1 << static_cast<int>(Face);
 		return Data & N;

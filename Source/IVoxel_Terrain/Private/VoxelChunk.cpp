@@ -222,30 +222,28 @@ FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)
 
 void UVoxelChunk::UpdateBlock(FBlockPos& Pos)
 {
-	//Update FaceVisiblityCache
+	auto& ThisVisiblity = GetFaceVisiblityCache(Pos);
+	const int ThisType = GetBlockState(Pos)->GetBlockDef()->OpaqueType();
 
-	FFaceVisiblityCache& FaceCache = GetFaceVisiblityCache(Pos);
-	FBlockState* BlockState = GetBlockState(Pos);
-	UBlock* BlockDef = BlockState->GetBlockDef();
+	ThisVisiblity.Data = 0;
 
-	FaceCache.Data = 0;
 	constexpr EBlockFace AllFaces[6] = { EBlockFace::FRONT, EBlockFace::BACK, EBlockFace::LEFT, EBlockFace::RIGHT, EBlockFace::TOP, EBlockFace::BOTTOM };
 
 	for (auto Face : AllFaces)
 	{
 		FBlockPos NextPos = FBlockPos(Pos);
 		NextPos.GlobalPos += FVoxelUtilities::GetFaceOffset(Face);
-		UVoxelChunk* NChunk = NextPos.GetChunk();
-		FBlockState* NextState = NChunk->GetBlockState(NextPos);
-		UBlock* NextBlockDef = NextState->GetBlockDef();
+		auto NextChunk = NextPos.GetChunk();
+		auto& NextVisiblity = NextChunk->GetFaceVisiblityCache(NextPos);
+		const int NextType = NextChunk->GetBlockState(NextPos)->GetBlockDef()->OpaqueType();
 
-		const bool ThisVisible = BlockDef->IsFaceVisible(Face);
-		const bool OppoVisible = NextBlockDef->IsFaceVisible(FVoxelUtilities::GetOppositeFace(Face));
-		const bool Visible = ThisVisible != OppoVisible;
+		const bool IsVisible = ThisType != NextType;
+		const bool ThisVisible = ThisType && IsVisible;
+		const bool NextVisible = NextType && IsVisible;
 
-		if (NChunk->GetFaceVisiblityCache(NextPos).SetFaceVisible(FVoxelUtilities::GetOppositeFace(Face), Visible && OppoVisible))
-			NChunk->SetRenderDirty();
-		FaceCache.SetFaceVisible(Face, Visible && ThisVisible);
+		ThisVisiblity.SetFaceVisible(Face, ThisVisible);
+		if (NextVisiblity.SetFaceVisible(FVoxelUtilities::GetOppositeFace(Face), NextVisible))
+			NextChunk->SetRenderDirty();
 	}
 }
 

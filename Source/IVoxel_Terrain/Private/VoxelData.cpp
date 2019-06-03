@@ -18,22 +18,22 @@ FBlockPos::FBlockPos(AVoxelWorld* VoxelWorld, FIntVector GlobalPosition)
 	GlobalPos = GlobalPosition;
 }
 
-FIntVector FBlockPos::GetGlobalPosition()
+FIntVector FBlockPos::GetGlobalPosition() const
 {
 	return GlobalPos;
 }
 
-AVoxelWorld* FBlockPos::GetWorld()
+AVoxelWorld* FBlockPos::GetWorld() const
 {
 	return World;
 }
 
-FIntVector FBlockPos::GetChunkIndex()
+FIntVector FBlockPos::GetChunkIndex() const
 {
 	//-1 / 16 needs to be -1, not zero
 	auto CustomDiv = [](int Val, int Div) 
 	{
-		int Result = Val / Div;
+		const int Result = Val / Div;
 		return Div * Result == Val ? Result : Result - ((Val < 0) ^ (Div < 0));
 	};
 
@@ -42,20 +42,20 @@ FIntVector FBlockPos::GetChunkIndex()
 	, CustomDiv(GlobalPos.Z, VOX_CHUNKSIZE));
 }
 
-FIntVector FBlockPos::GetLocalPos()
+FIntVector FBlockPos::GetLocalPos() const
 {
 	//Wtf c++ implementation is different from python implementation
-	auto CustomModulo = [](int& Val, int Div) {const int Result = Val % Div; return Result < 0 ? Result + Div : Result; };
+	auto CustomModulo = [](int Val, int Div) {const int Result = Val % Div; return Result < 0 ? Result + Div : Result; };
 	return FIntVector(CustomModulo(GlobalPos.X, VOX_CHUNKSIZE)
 		, CustomModulo(GlobalPos.Y, VOX_CHUNKSIZE)
 		, CustomModulo(GlobalPos.Z, VOX_CHUNKSIZE));
 }
-UVoxelChunk* FBlockPos::GetChunk()
+UVoxelChunk* FBlockPos::GetChunk() const
 {
 	return World->GetChunkFromBlockPos(*this);
 }
 
-int FBlockPos::ArrayIndex()
+int FBlockPos::ArrayIndex() const
 {
 	FIntVector ChunkLocalPos = GetLocalPos();
 	return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);

@@ -14,6 +14,7 @@ class UVoxelWorldGenerator;
 class AVoxelChunkRender;
 struct FVoxelInvoker;
 struct FBlockPos;
+class FMyQueuedThreadPool;
 
 UCLASS()
 class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
@@ -41,6 +42,9 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	int PolygonizerThreads = 2;
+
+	UPROPERTY(EditAnywhere)
+	int PrimeUpdateThreshold = 10;
 
 private:
 	UPROPERTY()
@@ -72,10 +76,14 @@ private:
 
 	TSharedPtr<FBlockRegistryInstance> RegistryReference;
 
-	FQueuedThreadPool* PolygonizerThreadPool;
-	FQueuedThreadPool* WorldGeneratorThreadPool;
+	FMyQueuedThreadPool* PolygonizerThreadPool;
+	FMyQueuedThreadPool* WorldGeneratorThreadPool;
 	
-	bool PrimeUpdated = false;
+	int PrimeUpdateCount = 0;
+
+public:
+	FThreadSafeCounter MesherThreads;
+	FThreadSafeCounter WorldGenThreads;
 
 private:
 	AVoxelChunkRender* CreateRenderActor();

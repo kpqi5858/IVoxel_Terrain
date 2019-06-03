@@ -42,9 +42,11 @@ void FVoxelPolygonizer::DoPolygonize()
 		}
 		check(PolygonizedData->Sections.IsValidIndex(SectionNum));
 
+		auto& ThisVisiblity = Chunk->GetFaceVisiblityCache(BlockPos);
+
 		for (EBlockFace Face : AllFaces)
 		{
-			if (IsThisFaceVisible(BlockPos, Face))
+			if (ThisVisiblity.IsThisFaceVisible(Face))
 			{
 				CreateFace(X, Y, Z, SectionNum, Face);
 			}

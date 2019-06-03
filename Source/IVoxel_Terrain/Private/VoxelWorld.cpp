@@ -10,8 +10,8 @@ AVoxelWorld::AVoxelWorld()
 
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bHighPriority = true;
-	PolygonizerThreadPool = FQueuedThreadPool::Allocate();
-	WorldGeneratorThreadPool = FQueuedThreadPool::Allocate();
+	PolygonizerThreadPool = new FMyQueuedThreadPool;
+	WorldGeneratorThreadPool = new FMyQueuedThreadPool;
 }
 
 void AVoxelWorld::BeginPlay()
@@ -22,8 +22,8 @@ void AVoxelWorld::BeginPlay()
 
 void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
-	PolygonizerThreadPool->Destroy();
-	WorldGeneratorThreadPool->Destroy();
+	delete PolygonizerThreadPool;
+	delete WorldGeneratorThreadPool;
 }
 
 void AVoxelWorld::Tick(float DeltaSeconds)
@@ -45,8 +45,12 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 		return Result;
 	});
 
-	PrimeUpdated = false;
+	PrimeUpdateCount = 0;
 
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 0, FColor::White, FString::Printf(TEXT("WorldGen : %d, Mesher : %d"), WorldGeneratorThreadPool->GetNumQueuedJobs(), PolygonizerThreadPool->GetNumQueuedJobs()));
+	}
 	//Create chunks around invokers
 	//And lock LoadedChunk
 	if (InternalTicks % CreateChunkInterval == 0)
@@ -319,16 +323,19 @@ bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk* Chunk)
 void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
 {
 	WorldGeneratorThreadPool->AddQueuedWork(new FWorldGeneratorThread(Chunk));
+	WorldGenThreads.Increment();
 }
 
 void AVoxelWorld::QueuePostWorldGeneration(UVoxelChunk* Chunk)
 {
 	WorldGeneratorThreadPool->AddQueuedWork(new FPostWorldGeneratorThread(Chunk));
+	WorldGenThreads.Increment();
 }
 
 void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)
 {
 	PolygonizerThreadPool->AddQueuedWork(new FVoxelPolygonizerThread(Render));
+	MesherThreads.Increment();
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
@@ -349,9 +356,9 @@ float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
 
 bool AVoxelWorld::ShouldUpdatePrime()
 {
-	if (!PrimeUpdated)
+	if (PrimeUpdateCount < PrimeUpdateThreshold)
 	{
-		PrimeUpdated = true;
+		PrimeUpdateCount++;
 		return true;
 	}
 	return false;
