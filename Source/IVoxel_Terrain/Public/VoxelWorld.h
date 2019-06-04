@@ -43,8 +43,9 @@ public:
 	UPROPERTY(EditAnywhere)
 	int PolygonizerThreads = 2;
 
+	//How many chunks will updated in tick
 	UPROPERTY(EditAnywhere)
-	int PrimeUpdateThreshold = 10;
+	int ChunkUpdateThreshold = 100;
 
 private:
 	UPROPERTY()
@@ -79,11 +80,7 @@ private:
 	FMyQueuedThreadPool* PolygonizerThreadPool;
 	FMyQueuedThreadPool* WorldGeneratorThreadPool;
 	
-	int PrimeUpdateCount = 0;
-
-public:
-	FThreadSafeCounter MesherThreads;
-	FThreadSafeCounter WorldGenThreads;
+	int ChunkUpdateCount = 0;
 
 private:
 	AVoxelChunkRender* CreateRenderActor();
@@ -131,10 +128,11 @@ public:
 
 	void QueueWorldGeneration(UVoxelChunk* Chunk);
 	void QueuePostWorldGeneration(UVoxelChunk* Chunk);
+	void QueueUpdateFaceVisiblity(UVoxelChunk* Chunk);
 
 	void QueuePolygonize(AVoxelChunkRender* Render);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
 
-	bool ShouldUpdatePrime();
+	bool ShouldUpdateChunk();
 };

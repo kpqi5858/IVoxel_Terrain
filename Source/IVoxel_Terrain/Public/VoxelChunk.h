@@ -40,6 +40,17 @@ enum class EWorldGenState : uint8
 	DIRTYSET
 };
 
+enum class ENewWorldGenState : uint8
+{
+	NOT_GENERATED,
+	GENERTING_PRIME,
+	GENERTED_PRIME,
+	VISIBLITY_UPDATING,
+	VISIBLITY_UPDATED,
+	GENERATING_POST,
+	GENERATED_POST
+};
+
 class IVOXEL_TERRAIN_API UPrimeChunk
 {
 public:
@@ -77,13 +88,9 @@ public:
 
 	FThreadSafeCounter WorldGeneratorsReferences;
 
-	EWorldGenState WorldGenState = EWorldGenState::NOT_GENERATED;
+	ENewWorldGenState NewWorldGenState = ENewWorldGenState::NOT_GENERATED;
 
 	UPrimeChunk PrimeChunk;
-
-	int PrimeGenerated = 0;
-
-	int PostGeneration = 0;
 
 public:
     UVoxelChunk();
@@ -98,6 +105,7 @@ public:
 
 	void GenerateWorld();
 	void PostGenerateWorld();
+	void UpdateFaceVisiblityAll();
 
 	void ProcessPrimeChunk();
 
@@ -116,6 +124,7 @@ public:
 	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos& Pos);
 
 	inline void UpdateBlock(FBlockPos& Pos);
+	inline void UpdateFaceVisiblity(FBlockPos& Pos);
 
 	void GetAdjacentChunks(TArray<UVoxelChunk*>& Ret);
 	void GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret);
@@ -124,6 +133,8 @@ public:
 	bool ShouldBeTicked();
 	bool ShouldBeDeleted();
 	bool ShouldPostGenerate();
+	bool ShouldUpdateFaceVisiblity();
+
 
 //Chunk state related functions
 public:

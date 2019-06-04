@@ -92,7 +92,7 @@ class FQueuedWorkCompare
 public:
 	inline bool operator() (const IMyQueuedWork* A, const IMyQueuedWork* B)
 	{
-		return A->GetPriority() < B->GetPriority();
+		return A->GetPriority() > B->GetPriority();
 	}
 };
 
@@ -141,9 +141,6 @@ public:
 };
 
 
-
-
-
 class FVoxelPolygonizerThread : public IMyQueuedWork
 {
 public:
@@ -155,7 +152,7 @@ public:
 	void Abandon() override;
 	int GetPriority() const override
 	{
-		return 0;
+		return 1;
 	};
 };
 
@@ -170,7 +167,7 @@ public:
 	void Abandon() override;
 	int GetPriority() const override
 	{
-		return 0;
+		return 1;
 	};
 };
 
@@ -178,6 +175,21 @@ class FPostWorldGeneratorThread : public IMyQueuedWork
 {
 public:
 	FPostWorldGeneratorThread(UVoxelChunk* Chunk);
+
+	UVoxelChunk* Chunk;
+
+	void DoThreadedWork() override;
+	void Abandon() override;
+	int GetPriority() const override
+	{
+		return 0;
+	};
+};
+
+class FUpdateVisiblityThread : public IMyQueuedWork
+{
+public:
+	FUpdateVisiblityThread(UVoxelChunk* Chunk);
 
 	UVoxelChunk* Chunk;
 

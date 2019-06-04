@@ -26,7 +26,6 @@ public:
 	virtual void GeneratePrime(UVoxelChunk* Chunk)
 	{
 		GeneratePrimeInternal(Chunk);
-		Chunk->WorldGenState = EWorldGenState::GENERATED;
 	};
 
 	virtual void GeneratePrimeInternal(UVoxelChunk* Chunk)

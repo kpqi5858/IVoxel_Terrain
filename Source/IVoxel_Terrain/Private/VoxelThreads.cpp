@@ -325,3 +325,19 @@ void FPostWorldGeneratorThread::Abandon()
 {
 	delete this;
 }
+
+FUpdateVisiblityThread::FUpdateVisiblityThread(UVoxelChunk* Chunk)
+	: Chunk(Chunk)
+{
+}
+
+void FUpdateVisiblityThread::DoThreadedWork()
+{
+	Chunk->UpdateFaceVisiblityAll();
+	delete this;
+}
+
+void FUpdateVisiblityThread::Abandon()
+{
+	delete this;
+}

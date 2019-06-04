@@ -45,7 +45,7 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 		return Result;
 	});
 
-	PrimeUpdateCount = 0;
+	ChunkUpdateCount = 0;
 
 	if (GEngine)
 	{
@@ -157,7 +157,7 @@ void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
 	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048);
-	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048, EThreadPriority::TPri_AboveNormal);
+	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048);
 	VoxelSizeInit = VoxelSize;
 	FBlockRegistry::ReloadBlocks();
 	RegistryReference = FBlockRegistry::GetInstance();
@@ -323,19 +323,21 @@ bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk* Chunk)
 void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
 {
 	WorldGeneratorThreadPool->AddQueuedWork(new FWorldGeneratorThread(Chunk));
-	WorldGenThreads.Increment();
 }
 
 void AVoxelWorld::QueuePostWorldGeneration(UVoxelChunk* Chunk)
 {
 	WorldGeneratorThreadPool->AddQueuedWork(new FPostWorldGeneratorThread(Chunk));
-	WorldGenThreads.Increment();
+}
+
+void AVoxelWorld::QueueUpdateFaceVisiblity(UVoxelChunk* Chunk)
+{
+	PolygonizerThreadPool->AddQueuedWork(new FUpdateVisiblityThread(Chunk));
 }
 
 void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)
 {
 	PolygonizerThreadPool->AddQueuedWork(new FVoxelPolygonizerThread(Render));
-	MesherThreads.Increment();
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
@@ -354,11 +356,11 @@ float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)
 	return MinDist;
 }
 
-bool AVoxelWorld::ShouldUpdatePrime()
+bool AVoxelWorld::ShouldUpdateChunk()
 {
-	if (PrimeUpdateCount < PrimeUpdateThreshold)
+	if (ChunkUpdateCount < ChunkUpdateThreshold)
 	{
-		PrimeUpdateCount++;
+		ChunkUpdateCount++;
 		return true;
 	}
 	return false;

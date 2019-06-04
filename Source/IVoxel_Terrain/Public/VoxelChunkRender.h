@@ -2,7 +2,7 @@
 
 #include "VoxelChunk.h"
 #include "VoxelPolygonizer.h"
-#include "RuntimeMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "VoxelChunkRender.generated.h"
 
 class UVoxelChunk;
@@ -15,13 +15,17 @@ private:
 	UPROPERTY()
 	UVoxelChunk* TheChunk;
 
+	AVoxelWorld* VoxelWorld;
+
 	bool Initialized = false;
 
-	URuntimeMeshComponent* RMC;
+	UProceduralMeshComponent* CustomMesh;
 
 	FVoxelPolygonizer* Polygonizer = nullptr;
 
 	FThreadSafeBool IsPolygonizing = false;
+
+	FVoxelPolygonizedData* PolygonizedData = nullptr;
 
 public:
 	AVoxelChunkRender();
@@ -34,6 +38,8 @@ public:
 
 	void RenderTick();
 	void Polygonize();
+
+	void RenderRequest();
 
 	void ApplyPolygonizedData(FVoxelPolygonizedData* Data);
 

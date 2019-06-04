@@ -3,8 +3,8 @@
 
 AVoxelChunkRender::AVoxelChunkRender()
 {
-	RMC = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("RMC"));
-	RootComponent = RMC;
+	CustomMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CustomMesh"));
+	RootComponent = CustomMesh;
 	TheChunk = nullptr;
 }
 
@@ -14,17 +14,19 @@ void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 
 	TheChunk = Chunk;
 	Initialized = true;
-	RMC->SetVisibility(true);
+	CustomMesh->SetVisibility(true);
 	Polygonizer = new FVoxelPolygonizer(Chunk);
 	SetActorLocation(FVector(Chunk->GetGlobalPosition_Min()) * Chunk->GetVoxelWorld()->GetVoxelSize());
+
+	VoxelWorld = Chunk->GetVoxelWorld();
 }
 
 void AVoxelChunkRender::DestroyRender()
 {
 	check(Initialized);
 
-	RMC->ClearAllMeshSections();
-	RMC->SetVisibility(false);
+	CustomMesh->ClearAllMeshSections();
+	CustomMesh->SetVisibility(false);
 	TheChunk = nullptr;
 	Initialized = false;
 }
@@ -48,9 +50,16 @@ void AVoxelChunkRender::RenderTick()
 	check(Initialized);
 	if (Polygonizer->IsDone())
 	{
-		ApplyPolygonizedData(Polygonizer->PopPolygonizedData());
+		PolygonizedData = Polygonizer->PopPolygonizedData();
 		IsPolygonizing = false;
 	}
+
+	if (PolygonizedData && VoxelWorld->ShouldUpdateChunk())
+	{
+		ApplyPolygonizedData(PolygonizedData);
+		PolygonizedData = nullptr;
+	}
+
 }
 
 void AVoxelChunkRender::Polygonize()
@@ -63,14 +72,18 @@ void AVoxelChunkRender::Polygonize()
 	Polygonizer->DoPolygonize();
 }
 
+void AVoxelChunkRender::RenderRequest()
+{
+}
+
 void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)
 {
 	for (int Index = 0; Index < Data->Sections.Num(); Index++)
 	{
 		auto& Section = Data->Sections[Index];
 		if (Section.Material)
-			RMC->SetMaterial(Index, Section.Material);
-		RMC->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FRuntimeMeshTangent>(), true);
+			CustomMesh->SetMaterial(Index, Section.Material);
+		CustomMesh->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FProcMeshTangent>(), true);
 	}
 }
 
