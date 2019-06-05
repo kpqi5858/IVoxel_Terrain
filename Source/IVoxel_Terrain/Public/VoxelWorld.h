@@ -120,6 +120,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos, bool DoLock = true);
 
+	//Maybe faster (Fewer lock)
+	void GetChunksFromIndices(TArray<FIntVector>& Pos, TArray<UVoxelChunk*>& Result);
+
+
 	UFUNCTION(BlueprintCallable)
 	FIntVector WorldPosToVoxelPos(FVector Pos);
 

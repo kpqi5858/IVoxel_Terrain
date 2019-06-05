@@ -132,7 +132,7 @@ public:
 
 		FIntVector Result = FIntVector(X, Y, Z);
 		//check(!VOX_IS_OUTOFLOCALPOS(Result));
-		//checkf((VOX_CHUNK_AI(X, Y, Z)) == OriginalIndex, TEXT("%d(%d,%d,%d) %d"), VOX_CHUNK_AI(X, Y, Z), X, Y, Z, OriginalIndex);
+		checkf((VOX_CHUNK_AI(X, Y, Z)) == OriginalIndex, TEXT("%d(%d,%d,%d) %d"), VOX_CHUNK_AI(X, Y, Z), X, Y, Z, OriginalIndex);
 		return Result;
 	}
 };
@@ -205,20 +205,20 @@ public:
 
 struct FFaceVisiblityCache
 {
-	uint32 Data = 0;
+	uint8 Data = 0;
 
 	FORCEINLINE bool IsThisFaceVisible(EBlockFace Face) const
 	{
-		uint32 N = 1 << static_cast<int>(Face);
+		uint8 N = 1 << static_cast<int>(Face);
 		return Data & N;
 	}
 
 	//Returns true if modified
 	FORCEINLINE bool SetFaceVisible(EBlockFace Face, bool Value)
 	{
-		uint32 Old = Data;
+		uint8 Old = Data;
 
-		uint32 N = 1 << static_cast<int>(Face);
+		uint8 N = 1 << static_cast<int>(Face);
 		if (Value)
 		{
 			Data |= N;

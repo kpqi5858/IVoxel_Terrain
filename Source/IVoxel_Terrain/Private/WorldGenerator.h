@@ -23,6 +23,11 @@ public:
 
 	};
 	
+	virtual void Setup()
+	{
+
+	};
+
 	virtual void GeneratePrime(UVoxelChunk* Chunk)
 	{
 		GeneratePrimeInternal(Chunk);
@@ -114,12 +119,20 @@ public:
 };
 
 UCLASS()
-class U3DNoiseWorldGenerator : public UVoxelWorldGenerator
+class UTestWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 public:
-	virtual ~U3DNoiseWorldGenerator()
+	UPROPERTY()
+	UUFNNoiseGenerator* HeightMapGen;
+
+	virtual ~UTestWorldGenerator()
 	{
+	}
+
+	virtual void Setup() override
+	{
+		HeightMapGen = UUFNBlueprintFunctionLibrary::CreateNoiseGenerator(this, ENoiseType::SimplexFractal, ECellularDistanceFunction::Euclidean, ECellularReturnType::Distance2, EFractalType::FBM, EInterp::InterpHermite, FMath::Rand(), 5, 0.05);
 	}
 
 	virtual void GeneratePrimeInternal(UVoxelChunk* Chunk) override
@@ -133,6 +146,17 @@ public:
 				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
 				{
 					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+
+					float NoiseVal = HeightMapGen->GetNoise3D(GlobalPos.X, GlobalPos.Y, GlobalPos.Z);
+					
+					if (NoiseVal < -0.3)
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("SolidDefault"));
+					}
+					else
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
+					}
 				}
 			}
 		}

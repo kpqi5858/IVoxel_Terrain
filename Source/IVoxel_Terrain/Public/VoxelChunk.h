@@ -35,14 +35,6 @@ enum class EChunkState : uint8
 enum class EWorldGenState : uint8
 {
 	NOT_GENERATED,
-	GENERATING,
-	GENERATED,
-	DIRTYSET
-};
-
-enum class ENewWorldGenState : uint8
-{
-	NOT_GENERATED,
 	GENERTING_PRIME,
 	GENERTED_PRIME,
 	VISIBLITY_UPDATING,
@@ -61,6 +53,8 @@ public:
 	void SetBlockDef(int X, int Y, int Z, UBlock* Block);
 };
 
+//184KB
+//Or, Nearly 200KB including(assuming) UObject
 UCLASS(Blueprintable)
 class IVOXEL_TERRAIN_API UVoxelChunk : public UObject
 {
@@ -75,8 +69,8 @@ protected:
 	UPROPERTY()
 	UVoxelWorldGenerator* WorldGenerator;
 
-	TSharedPtr<TAbstractBlockStorage<FBlockState>> BlockStateStorage;
-	TSharedPtr<TAbstractBlockStorage<FFaceVisiblityCache>> FaceVisiblityCache;
+	TAbstractBlockStorage<FBlockState>* BlockStateStorage = nullptr;
+	TAbstractBlockStorage<FFaceVisiblityCache>* FaceVisiblityCache = nullptr;
 
 	EChunkState ChunkState = EChunkState::CS_Invalid;
 	FCriticalSection ChunkStateLock;
@@ -88,12 +82,13 @@ public:
 
 	FThreadSafeCounter WorldGeneratorsReferences;
 
-	ENewWorldGenState NewWorldGenState = ENewWorldGenState::NOT_GENERATED;
+	EWorldGenState WorldGenState = EWorldGenState::NOT_GENERATED;
 
 	UPrimeChunk PrimeChunk;
 
 public:
     UVoxelChunk();
+	~UVoxelChunk();
 
     virtual void ChunkTick();
 

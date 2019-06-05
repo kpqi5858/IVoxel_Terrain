@@ -50,6 +50,7 @@ void AVoxelChunkRender::RenderTick()
 	check(Initialized);
 	if (Polygonizer->IsDone())
 	{
+		if (PolygonizedData) delete PolygonizedData;
 		PolygonizedData = Polygonizer->PopPolygonizedData();
 		IsPolygonizing = false;
 	}
@@ -57,6 +58,7 @@ void AVoxelChunkRender::RenderTick()
 	if (PolygonizedData && VoxelWorld->ShouldUpdateChunk())
 	{
 		ApplyPolygonizedData(PolygonizedData);
+		delete PolygonizedData;
 		PolygonizedData = nullptr;
 	}
 
@@ -83,6 +85,7 @@ void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)
 		auto& Section = Data->Sections[Index];
 		if (Section.Material)
 			CustomMesh->SetMaterial(Index, Section.Material);
+		if (Section.Vertex.Num() < 3 || Section.Triangle.Num() == 0) continue;
 		CustomMesh->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FProcMeshTangent>(), true);
 	}
 }

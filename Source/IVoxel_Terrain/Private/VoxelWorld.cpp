@@ -49,13 +49,13 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 0, FColor::White, FString::Printf(TEXT("WorldGen : %d, Mesher : %d"), WorldGeneratorThreadPool->GetNumQueuedJobs(), PolygonizerThreadPool->GetNumQueuedJobs()));
+		GEngine->AddOnScreenDebugMessage(1, 0, FColor::White, FString::Printf(TEXT("WorldGen : %d, Render : %d"), WorldGeneratorThreadPool->GetNumQueuedJobs(), PolygonizerThreadPool->GetNumQueuedJobs()));
 	}
 	//Create chunks around invokers
 	//And lock LoadedChunk
 	if (InternalTicks % CreateChunkInterval == 0)
 	{
-		FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
+		//FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
 
 		for (auto& Invoker : InvokersList)
 		{
@@ -65,15 +65,30 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 			FIntVector MinPos = ChunkPos - (RenderChunkSize + PreGenerateChunkSize);
 			FIntVector MaxPos = ChunkPos + (RenderChunkSize + PreGenerateChunkSize);
 
+			//Adjacent chunks cache
+			MinPos -= FIntVector(1);
+			MaxPos += FIntVector(1);
+
+			TArray<FIntVector> Poses;
+
 			for (int X = MinPos.X; X < MaxPos.X; X++)
 			for (int Y = MinPos.Y; Y < MaxPos.Y; Y++)
 			for (int Z = MinPos.Z; Z < MaxPos.Z; Z++)
 			{
-				//Already locked LoadedChunk
-				UVoxelChunk* Chunk = GetChunkFromIndex(FIntVector(X, Y, Z), false);
+				Poses.Add(FIntVector(X, Y, Z));
+			}
 
+			TArray<UVoxelChunk*> Chunks;
+			Chunks.Reserve(Poses.Num());
+
+			//Will faster
+			GetChunksFromIndices(Poses, Chunks);
+
+			for (auto& Chunk : Chunks)
+			{
 				LoadChunk(Chunk);
 			}
+
 		}
 	}
 
@@ -138,7 +153,7 @@ AVoxelChunkRender* AVoxelWorld::GetFreeRenderActor()
 {
 	if (FreeRender.Num())
 	{
-		return FreeRender.Pop();
+		return FreeRender.Pop(false);
 	}
 	else
 	{
@@ -163,12 +178,15 @@ void AVoxelWorld::Initialize()
 	RegistryReference = FBlockRegistry::GetInstance();
 
 	InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>(this, GetWorldGeneratorClass());
+	InstancedWorldGenerator->Setup();
 
 	FIntVector Temp = RenderChunkSize * 2;
 
 	//Create render chunks now
 	int NumToCreate = Temp.X * Temp.Y * Temp.Z;
 	NumToCreate += (NumToCreate / 4);
+	FreeRender.Reserve(NumToCreate);
+
 	for (int i = 0; i < NumToCreate; i++)
 	{
 		FreeRender.Add(CreateRenderActor());
@@ -255,6 +273,46 @@ UVoxelChunk* AVoxelWorld::GetChunkFromBlockPos(FBlockPos Pos, bool DoLock)
 {
 	FIntVector Index = Pos.GetChunkIndex();
 	return GetChunkFromIndex(Index, DoLock);
+}
+
+void AVoxelWorld::GetChunksFromIndices(TArray<FIntVector>& Pos, TArray<UVoxelChunk*>& Result)
+{
+	TArray<FIntVector> UnloadedChunk;
+	UnloadedChunk.Reserve(Pos.Num());
+	{
+		FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_ReadOnly);
+		for (auto& Index : Pos)
+		{
+			auto Find = LoadedChunk.Find(Index);
+			if (Find)
+			{
+				Result.Add(*Find);
+			}
+			else
+			{
+				UnloadedChunk.Add(Index);
+			}
+		}
+	}
+	if (UnloadedChunk.Num())
+	{
+		FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
+		for (auto& Index : UnloadedChunk)
+		{
+			//Just in case if chunk is loaded before lock
+			auto Find = LoadedChunk.Find(Index);
+			if (Find)
+			{
+				Result.Add(*Find);
+			}
+			else
+			{
+				auto Chunk = CreateVoxelChunk(Index);
+				LoadedChunk.Add(Index, Chunk);
+				Result.Add(Chunk);
+			}
+		}
+	}
 }
 
 FIntVector AVoxelWorld::WorldPosToVoxelPos(FVector Pos)

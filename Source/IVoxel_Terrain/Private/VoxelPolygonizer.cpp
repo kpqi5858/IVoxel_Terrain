@@ -9,11 +9,8 @@ FVoxelPolygonizer::FVoxelPolygonizer(UVoxelChunk* ChunkToRender)
 
 void FVoxelPolygonizer::DoPolygonize()
 {
-	check(!IsFinished);
+	ensureAlways(!IsFinished);
 	IsFinished = false;
-
-	if (PolygonizedData)
-		delete PolygonizedData;
 
 	PolygonizedData = new FVoxelPolygonizedData();
 
