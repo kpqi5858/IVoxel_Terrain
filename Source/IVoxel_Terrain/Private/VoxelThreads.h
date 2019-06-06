@@ -140,7 +140,6 @@ public:
 	virtual IMyQueuedWork* ReturnToPoolOrGetNextJob(FMyQueuedThread* InQueuedThread);
 };
 
-
 class FVoxelPolygonizerThread : public IMyQueuedWork
 {
 public:
@@ -199,4 +198,21 @@ public:
 	{
 		return 0;
 	};
+};
+
+class FVoxelChunkLoaderThread : public IMyQueuedWork
+{
+public:
+	FVoxelChunkLoaderThread(AVoxelWorld* World);
+
+	AVoxelWorld* World;
+
+	bool IsDone = true;
+
+	void DoThreadedWork() override;
+	void Abandon() override;
+	int GetPriority() const override
+	{
+		return 10;
+	}
 };

@@ -17,7 +17,6 @@ UVoxelChunk::~UVoxelChunk()
 void UVoxelChunk::ChunkTick()
 {
 	check(!IsUnreachable());
-	//Correct ChunkState
 
 	bool RenderedFlag = ShouldBeRendered();
 
@@ -42,13 +41,13 @@ void UVoxelChunk::ChunkTick()
 		WorldGenState = EWorldGenState::GENERTING_PRIME;
 		World->QueueWorldGeneration(this);
 	}
-
+	
 	if (ShouldPostGenerate())
 	{
 		WorldGenState = EWorldGenState::GENERATING_POST;
 		World->QueuePostWorldGeneration(this);
 	}
-
+	
 	//Out of range
 	if (!World->ShouldGenerateWorld(this))
 	{
@@ -218,7 +217,7 @@ bool UVoxelChunk::IsValidChunk()
 
 FBlockState* UVoxelChunk::GetBlockState(FBlockPos& Pos)
 {
-	check(Pos.GetChunk() == this);
+	//check(Pos.GetChunk() == this);
 	return BlockStateStorage->Get(Pos.ArrayIndex());
 }
 
@@ -242,7 +241,7 @@ void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 
 FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)
 {
-	check(Pos.GetChunk() == this);
+	//check(Pos.GetChunk() == this);
 	return *FaceVisiblityCache->Get(Pos.ArrayIndex());
 }
 

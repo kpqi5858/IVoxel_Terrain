@@ -1,4 +1,5 @@
 #include "VoxelThreads.h"
+#include "VoxelWorld.h"
 
 /**
 * The real thread entry point. It waits for work events to be queued. Once
@@ -340,4 +341,19 @@ void FUpdateVisiblityThread::DoThreadedWork()
 void FUpdateVisiblityThread::Abandon()
 {
 	delete this;
+}
+
+FVoxelChunkLoaderThread::FVoxelChunkLoaderThread(AVoxelWorld* World)
+	: World(World)
+{
+}
+
+void FVoxelChunkLoaderThread::DoThreadedWork()
+{
+	World->InitChunkAroundInvoker();
+	IsDone = true;
+}
+
+void FVoxelChunkLoaderThread::Abandon()
+{
 }

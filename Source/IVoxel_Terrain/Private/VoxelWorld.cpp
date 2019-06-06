@@ -12,6 +12,8 @@ AVoxelWorld::AVoxelWorld()
 	PrimaryActorTick.bHighPriority = true;
 	PolygonizerThreadPool = new FMyQueuedThreadPool;
 	WorldGeneratorThreadPool = new FMyQueuedThreadPool;
+
+	ChunkLoaderThread = new FVoxelChunkLoaderThread(this);
 }
 
 void AVoxelWorld::BeginPlay()
@@ -24,26 +26,30 @@ void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
 	delete PolygonizerThreadPool;
 	delete WorldGeneratorThreadPool;
+
+	delete ChunkLoaderThread;
 }
 
 void AVoxelWorld::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	InternalTicks++;
-
-	//Remove invalid invokers
-	InvokersList.RemoveAllSwap([](FVoxelInvoker& VoxelInvoker)
 	{
-		return !VoxelInvoker.IsValid();
-	});
+		FScopeTimer ST(0.001);
+		//Remove invalid invokers
+		InvokersList.RemoveAllSwap([](FVoxelInvoker& VoxelInvoker)
+		{
+			return !VoxelInvoker.IsValid();
+		});
 
-	WaitingRender.RemoveAllSwap([&](AVoxelChunkRender* Render)
-	{
-		bool Result = !Render->IsPolygonizingNow();
-		if (Result) FreeRender.Add(Render);
-		return Result;
-	});
+		WaitingRender.RemoveAllSwap([&](AVoxelChunkRender* Render)
+		{
+			bool Result = !Render->IsPolygonizingNow();
+			if (Result) FreeRender.Add(Render);
+			return Result;
+		});
+	}
+
 
 	ChunkUpdateCount = 0;
 
@@ -51,51 +57,42 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 	{
 		GEngine->AddOnScreenDebugMessage(1, 0, FColor::White, FString::Printf(TEXT("WorldGen : %d, Render : %d"), WorldGeneratorThreadPool->GetNumQueuedJobs(), PolygonizerThreadPool->GetNumQueuedJobs()));
 	}
+
+
+	TArray<FIntVector> ToInit;
+	const int NumToInit = ChunkToInitNum / (CreateChunkInterval - 1) + 1;
+
+	ToInit.Reserve(NumToInit);
+
+	for (int i = 0; i < NumToInit; i++)
+	{
+		if (!ChunkToInit.Num()) break;
+		ToInit.Emplace(ChunkToInit.Pop(false));
+	}
+
+	TArray<UVoxelChunk*> Chunks;
+	GetChunksFromIndices(ToInit, Chunks);
+	for (auto& Chunk : Chunks)
+	{
+		LoadChunk(Chunk);
+	}
+
 	//Create chunks around invokers
 	//And lock LoadedChunk
 	if (InternalTicks % CreateChunkInterval == 0)
 	{
-		//FRWScopeLock Lock(LoadedChunkLock, FRWScopeLockType::SLT_Write);
-
-		for (auto& Invoker : InvokersList)
-		{
-			AActor* InvokerActor = Invoker.Object.Get();
-			FIntVector ChunkPos = FBlockPos(this, WorldPosToVoxelPos(InvokerActor->GetActorLocation())).GetChunkIndex();
-
-			FIntVector MinPos = ChunkPos - (RenderChunkSize + PreGenerateChunkSize);
-			FIntVector MaxPos = ChunkPos + (RenderChunkSize + PreGenerateChunkSize);
-
-			//Adjacent chunks cache
-			MinPos -= FIntVector(1);
-			MaxPos += FIntVector(1);
-
-			TArray<FIntVector> Poses;
-
-			for (int X = MinPos.X; X < MaxPos.X; X++)
-			for (int Y = MinPos.Y; Y < MaxPos.Y; Y++)
-			for (int Z = MinPos.Z; Z < MaxPos.Z; Z++)
-			{
-				Poses.Add(FIntVector(X, Y, Z));
-			}
-
-			TArray<UVoxelChunk*> Chunks;
-			Chunks.Reserve(Poses.Num());
-
-			//Will faster
-			GetChunksFromIndices(Poses, Chunks);
-
-			for (auto& Chunk : Chunks)
-			{
-				LoadChunk(Chunk);
-			}
-
-		}
+		check(!ChunkToInit.Num());
+		InitChunkAroundInvoker();
 	}
 
 	check(RegistryReference.IsValid());
 
 	//Tick loaded chunks
 	auto CopyTickList = TickListCache;
+	
+	//Tick should 4ms fewer
+	double TickThreshold = 0.005 / CopyTickList.Num();
+	TickThreshold *= 2;
 
 	for (auto& Chunk : CopyTickList)
 	{
@@ -104,6 +101,8 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 			Chunk->ChunkTick();
 		}
 	}
+
+	InternalTicks++;
 }
 
 void AVoxelWorld::RegisterTickList(UVoxelChunk* Chunk)
@@ -135,6 +134,46 @@ void AVoxelWorld::LoadChunk(UVoxelChunk* Chunk)
 	}
 	RegisterTickList(Chunk);
 	Chunk->TrySetChunkState(EChunkState::CS_NoRender);
+}
+
+void AVoxelWorld::InitChunkAroundInvoker()
+{
+	ChunkToInit.Reset();
+	for (auto& Invoker : InvokersList)
+	{
+		AActor* InvokerActor = Invoker.Object.Get();
+		FIntVector ChunkPos = FBlockPos(this, WorldPosToVoxelPos(InvokerActor->GetActorLocation())).GetChunkIndex();
+
+		FIntVector MinPos = ChunkPos - (RenderChunkSize + PreGenerateChunkSize);
+		FIntVector MaxPos = ChunkPos + (RenderChunkSize + PreGenerateChunkSize);
+
+		//Adjacent chunks cache
+		MinPos -= FIntVector(1);
+		MaxPos += FIntVector(1);
+
+		TArray<FIntVector>& Poses = ChunkToInit;
+
+		for (int X = MinPos.X; X <= MaxPos.X; X++)
+			for (int Y = MinPos.Y; Y <= MaxPos.Y; Y++)
+				for (int Z = MinPos.Z; Z <= MaxPos.Z; Z++)
+				{
+					Poses.Add(FIntVector(X, Y, Z));
+				}
+
+		ChunkToInitNum = Poses.Num();
+		/*
+		TArray<UVoxelChunk*> Chunks;
+		Chunks.Reserve(Poses.Num());
+		TArray<UVoxelChunk*> AdjacentChunks;
+		AdjacentChunks.Reserve(AdjacentCache.Num());
+
+		//Will faster
+		GetChunksFromIndices(Poses, Chunks);
+		GetChunksFromIndices(AdjacentCache, AdjacentChunks);
+
+		Inited = Chunks;
+		*/
+	}
 }
 
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
@@ -391,6 +430,11 @@ void AVoxelWorld::QueuePostWorldGeneration(UVoxelChunk* Chunk)
 void AVoxelWorld::QueueUpdateFaceVisiblity(UVoxelChunk* Chunk)
 {
 	PolygonizerThreadPool->AddQueuedWork(new FUpdateVisiblityThread(Chunk));
+}
+
+void AVoxelWorld::QueueChunkInit()
+{
+	WorldGeneratorThreadPool->AddQueuedWork(ChunkLoaderThread);
 }
 
 void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)

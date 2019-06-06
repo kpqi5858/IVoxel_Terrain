@@ -132,7 +132,7 @@ public:
 
 		FIntVector Result = FIntVector(X, Y, Z);
 		//check(!VOX_IS_OUTOFLOCALPOS(Result));
-		checkf((VOX_CHUNK_AI(X, Y, Z)) == OriginalIndex, TEXT("%d(%d,%d,%d) %d"), VOX_CHUNK_AI(X, Y, Z), X, Y, Z, OriginalIndex);
+		//checkf((VOX_CHUNK_AI(X, Y, Z)) == OriginalIndex, TEXT("%d(%d,%d,%d) %d"), VOX_CHUNK_AI(X, Y, Z), X, Y, Z, OriginalIndex);
 		return Result;
 	}
 };

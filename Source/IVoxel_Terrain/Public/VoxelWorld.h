@@ -6,6 +6,7 @@
 #include "IVoxel_Terrain.h"
 #include "VoxelChunk.h"
 #include "BlockRegistry.h"
+#include <chrono>
 
 #include "VoxelWorld.generated.h"
 
@@ -15,6 +16,30 @@ class AVoxelChunkRender;
 struct FVoxelInvoker;
 struct FBlockPos;
 class FMyQueuedThreadPool;
+class FVoxelChunkLoaderThread;
+
+class FScopeTimer
+{
+public:
+	std::chrono::system_clock::time_point Start;
+
+	double Threshold;
+
+	FScopeTimer(double BreakThreshold)
+		: Threshold(BreakThreshold)
+	{
+		Start = std::chrono::system_clock::now();
+	}
+	~FScopeTimer()
+	{
+		std::chrono::duration<double> Dur = std::chrono::system_clock::now() - Start;
+		double RealDur = Dur.count();
+		if (RealDur > Threshold)
+		{
+			ensureMsgf(false, TEXT("%f / %f"), Threshold, RealDur);
+		}
+	}
+};
 
 UCLASS()
 class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
@@ -82,6 +107,11 @@ private:
 	
 	int ChunkUpdateCount = 0;
 
+	FVoxelChunkLoaderThread* ChunkLoaderThread;
+
+	TArray<FIntVector> ChunkToInit;
+	int ChunkToInitNum = 9999999;
+
 private:
 	AVoxelChunkRender* CreateRenderActor();
 
@@ -101,6 +131,8 @@ public:
 
 	void UnloadChunk(UVoxelChunk* Chunk);
 	void LoadChunk(UVoxelChunk* Chunk);
+
+	void InitChunkAroundInvoker();
 
 	AVoxelChunkRender* GetFreeRenderActor();
 	void FreeRenderActor(AVoxelChunkRender* RenderActor);
@@ -133,6 +165,8 @@ public:
 	void QueueWorldGeneration(UVoxelChunk* Chunk);
 	void QueuePostWorldGeneration(UVoxelChunk* Chunk);
 	void QueueUpdateFaceVisiblity(UVoxelChunk* Chunk);
+
+	void QueueChunkInit();
 
 	void QueuePolygonize(AVoxelChunkRender* Render);
 
