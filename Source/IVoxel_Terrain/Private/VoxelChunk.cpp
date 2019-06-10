@@ -137,16 +137,19 @@ void UVoxelChunk::PostGenerateWorld()
 
 void UVoxelChunk::UpdateFaceVisiblityAll()
 {
+	FaceVisiblityCache->Lock();
 	for (int Index = 0; Index < VOX_CHUNKSIZE_ARRAY; Index++)
 	{
 		FBlockPos Pos = FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index));
 		UpdateFaceVisiblity(Pos);
 	}
 	WorldGenState = EWorldGenState::VISIBLITY_UPDATED;
+	FaceVisiblityCache->UnLock();
 }
 
 void UVoxelChunk::ProcessPrimeChunk()
 {
+	BlockStateStorageLock();
 	for (int Index = 0; Index < VOX_CHUNKSIZE_ARRAY; Index++)
 	{
 		FBlockPos Pos = FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index));
@@ -155,6 +158,7 @@ void UVoxelChunk::ProcessPrimeChunk()
 		if (Old == Block) continue; //SERIOUS TYPO
 		ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); }, false);
 	}
+	BlockStateStorageUnlock();
 }
 
 void UVoxelChunk::BlockStateStorageLock()
@@ -236,7 +240,9 @@ void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
 {
 	UBlock* Old = GetBlockState(Pos)->GetBlockDef();
 	if (Old == Block) return;
+	BlockStateStorageLock();
 	ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
+	BlockStateStorageUnlock();
 }
 
 FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)

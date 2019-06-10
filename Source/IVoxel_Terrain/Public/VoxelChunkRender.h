@@ -29,7 +29,8 @@ private:
 
 public:
 	AVoxelChunkRender();
-	
+	~AVoxelChunkRender();
+
 	void Initialize(UVoxelChunk* Chunk);
 	void DestroyRender();
 

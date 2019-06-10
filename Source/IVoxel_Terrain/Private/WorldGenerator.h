@@ -162,3 +162,132 @@ public:
 		}
 	};
 };
+
+UCLASS(Blueprintable)
+class UTerrainGenerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite)
+	UUFNNoiseGenerator* HeightMapGen;
+
+	UPROPERTY(BlueprintReadWrite)
+	UUFNNoiseGenerator* CaveGen;
+
+
+	UPROPERTY(BlueprintReadWrite)
+	int Height = 100;
+
+	UPROPERTY(BlueprintReadWrite)
+	UBlock* TopBlock;
+
+	UPROPERTY(BlueprintReadWrite)
+	UBlock* DownBlock;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void Setup_BP();
+
+	virtual void Setup() override
+	{
+		Setup_BP();
+	}
+	
+	virtual void GeneratePrimeInternal(UVoxelChunk* Chunk) override
+	{
+		UPrimeChunk& PC = Chunk->PrimeChunk;
+
+		for (int X = 0; X < VOX_CHUNKSIZE; X++)
+		{
+			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
+			{
+				FIntVector GlobalPosXY = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, 0);
+				float NoiseVal = HeightMapGen->GetNoise2D(GlobalPosXY.X, GlobalPosXY.Y) * Height;
+
+				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
+				{
+					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+					if (GlobalPos.Z < NoiseVal)
+					{
+						if (FMath::IsNearlyEqual(NoiseVal, GlobalPos.Z, 1))
+						{
+							PC.SetBlockDef(X, Y, Z, TopBlock);
+						}
+						else
+						{
+							PC.SetBlockDef(X, Y, Z, DownBlock);
+							float CaveNoise = CaveGen->GetNoise3D(GlobalPos.X, GlobalPos.Y, GlobalPos.Z);
+							if (CaveNoise < -0.5)
+							{
+								PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
+							}
+						}
+
+					}
+					else
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
+					}
+				}
+			}
+		}
+	}
+};
+
+UCLASS(Blueprintable)
+class USkyIslandsGanerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite)
+	UUFNNoiseGenerator* IslandGen;
+
+	UPROPERTY(BlueprintReadWrite)
+	UUFNNoiseGenerator* MaskGen;
+
+	UPROPERTY(BlueprintReadWrite)
+	UBlock* BlockToUse;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void Setup_BP();
+
+	virtual void Setup() override
+	{
+		Setup_BP();
+	}
+
+	virtual void GeneratePrimeInternal(UVoxelChunk* Chunk) override
+	{
+		UPrimeChunk& PC = Chunk->PrimeChunk;
+
+		auto GlobalMask = [](int Z)
+		{
+			const int Middle = 100;
+			return FMath::Clamp(Middle - (FMath::Abs(Z)), 0, 1);
+		};
+
+		for (int X = 0; X < VOX_CHUNKSIZE; X++)
+		{
+			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
+			{
+				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
+				{
+					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+					
+					float NoiseVal = IslandGen->GetNoise3D(GlobalPos.X, GlobalPos.Y, GlobalPos.Z);
+					float MaskVal = MaskGen->GetNoise3D(GlobalPos.X, GlobalPos.Y, GlobalPos.Z);
+
+					float FinalNoise = NoiseVal * FMath::Clamp(MaskVal, 0.f, 1.f) * GlobalMask(GlobalPos.Z);
+
+					if (FinalNoise < 0)
+					{
+						PC.SetBlockDef(X, Y, Z, BlockToUse);
+					}
+					else
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
+					}
+				}
+			}
+		}
+	};
+};

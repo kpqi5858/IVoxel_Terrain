@@ -91,6 +91,8 @@ private:
 
 	TArray<AVoxelChunkRender*> WaitingRender;
 
+	TSet<AVoxelChunkRender*> AllRenders;
+
 	UPROPERTY()
 	UVoxelWorldGenerator* InstancedWorldGenerator = nullptr;
 
@@ -123,6 +125,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+
+	void Destroy();
 
 	virtual void Tick(float DeltaSeconds) override;
 

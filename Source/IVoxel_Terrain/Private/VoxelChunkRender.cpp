@@ -8,6 +8,12 @@ AVoxelChunkRender::AVoxelChunkRender()
 	TheChunk = nullptr;
 }
 
+AVoxelChunkRender::~AVoxelChunkRender()
+{
+	if (PolygonizedData)
+		delete PolygonizedData;
+}
+
 void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 {
 	check(!Initialized);
@@ -17,6 +23,9 @@ void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 	CustomMesh->SetVisibility(true);
 	Polygonizer = new FVoxelPolygonizer(Chunk);
 	SetActorLocation(FVector(Chunk->GetGlobalPosition_Min()) * Chunk->GetVoxelWorld()->GetVoxelSize());
+
+	//Use async physics cooking
+	CustomMesh->bUseAsyncCooking = true;
 
 	VoxelWorld = Chunk->GetVoxelWorld();
 }
@@ -80,12 +89,21 @@ void AVoxelChunkRender::RenderRequest()
 
 void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)
 {
-	for (int Index = 0; Index < Data->Sections.Num(); Index++)
+	int CurSections = CustomMesh->GetNumSections();
+	int DataSections = Data->Sections.Num();
+
+	for (int Index = 0; Index < FMath::Max(CurSections, DataSections); Index++)
 	{
+		CustomMesh->ClearMeshSection(Index);
+		if (Index >= DataSections)
+		{
+			continue;
+		}
 		auto& Section = Data->Sections[Index];
 		if (Section.Material)
 			CustomMesh->SetMaterial(Index, Section.Material);
 		if (Section.Vertex.Num() < 3 || Section.Triangle.Num() == 0) continue;
+		
 		CustomMesh->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FProcMeshTangent>(), true);
 	}
 }

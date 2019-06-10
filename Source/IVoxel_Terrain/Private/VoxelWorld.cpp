@@ -24,6 +24,12 @@ void AVoxelWorld::BeginPlay()
 
 void AVoxelWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
+	Super::EndPlay(EndPlayReason);
+	Destroy();
+}
+
+void AVoxelWorld::Destroy()
+{
 	delete PolygonizerThreadPool;
 	delete WorldGeneratorThreadPool;
 
@@ -49,7 +55,6 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 			return Result;
 		});
 	}
-
 
 	ChunkUpdateCount = 0;
 
@@ -161,24 +166,14 @@ void AVoxelWorld::InitChunkAroundInvoker()
 				}
 
 		ChunkToInitNum = Poses.Num();
-		/*
-		TArray<UVoxelChunk*> Chunks;
-		Chunks.Reserve(Poses.Num());
-		TArray<UVoxelChunk*> AdjacentChunks;
-		AdjacentChunks.Reserve(AdjacentCache.Num());
-
-		//Will faster
-		GetChunksFromIndices(Poses, Chunks);
-		GetChunksFromIndices(AdjacentCache, AdjacentChunks);
-
-		Inited = Chunks;
-		*/
 	}
 }
 
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
 {
-	return (AVoxelChunkRender*) GetWorld()->SpawnActor(AVoxelChunkRender::StaticClass());
+	auto Render =  (AVoxelChunkRender*) GetWorld()->SpawnActor(AVoxelChunkRender::StaticClass());
+	AllRenders.Add(Render);
+	return Render;
 }
 
 UVoxelChunk* AVoxelWorld::CreateVoxelChunk(FIntVector Index)

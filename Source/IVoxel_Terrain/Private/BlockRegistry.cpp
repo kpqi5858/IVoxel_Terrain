@@ -1,5 +1,6 @@
 #include "BlockRegistry.h"
-#include "Engine/BlueprintGeneratedClass.h"
+#include "AssetRegistryModule.h"
+#include "Engine/Blueprint.h"
 
 TWeakPtr<FBlockRegistryInstance> FBlockRegistry::InstancePtr = TWeakPtr<FBlockRegistryInstance>();
 TArray<TWeakObjectPtr<UClass>> FBlockRegistry::BlockRegistry = TArray< TWeakObjectPtr<UClass>>();
@@ -70,14 +71,25 @@ UBlock* FBlockRegistryInstance::GetBlock(FString Name)
 void FBlockRegistry::ReloadBlocks()
 {
 	BlockRegistry.Empty();
-	
-	TArray<UObject*> Objs;
+	const auto BlockClass = UBlock::StaticClass();
 
-	GetObjectsOfClass(UBlock::StaticClass(), Objs);
+	FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FAssetData> AssetData;
+	AssetRegistry.Get().GetAssetsByClass(UBlueprint::StaticClass()->GetFName(), AssetData);
+
+	//Load blueprint assets to register them
+	for (auto& Asset : AssetData)
+	{
+		//This thing will load every blueprint, which is BAD
+		auto Obj = Asset.GetClass();
+	}
+
+	TArray<UObject*> Objs;
+	GetObjectsOfClass(BlockClass, Objs);
 
 	for (TObjectIterator<UClass> It; It; ++It)
 	{
-		if (It->IsChildOf(UBlock::StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract) && !It->GetName().StartsWith(TEXT("SKEL_")))
+		if (It->IsChildOf(UBlock::StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract) && !It->GetName().StartsWith(TEXT("SKEL_")) && !It->GetName().StartsWith(TEXT("REINST_")))
 		{
 			BlockRegistry.AddUnique(*It);
 		}
