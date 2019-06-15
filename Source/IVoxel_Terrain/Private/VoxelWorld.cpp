@@ -104,11 +104,12 @@ void AVoxelWorld::Tick(float DeltaSeconds)
 	auto CopyTickList = TickListCache;
 	
 	//Tick should 4ms fewer
-	double TickThreshold = 0.005 / CopyTickList.Num();
+	double TickThreshold = 0.01 / CopyTickList.Num();
 	TickThreshold *= 2;
 
 	for (auto& Chunk : CopyTickList)
 	{
+		FScopeTimer ST(TickThreshold);
 		if (Chunk->ShouldBeTicked())
 		{
 			Chunk->ChunkTick();
@@ -159,10 +160,6 @@ void AVoxelWorld::InitChunkAroundInvoker()
 
 		FIntVector MinPos = ChunkPos - (RenderChunkSize + PreGenerateChunkSize);
 		FIntVector MaxPos = ChunkPos + (RenderChunkSize + PreGenerateChunkSize);
-
-		//Adjacent chunks cache
-		MinPos -= FIntVector(1);
-		MaxPos += FIntVector(1);
 
 		TArray<FIntVector>& Poses = ChunkToInit;
 

@@ -391,7 +391,8 @@ void FChunkUniversalThread::DoThreadedWork()
 	}
 	case EUniversalThreadType::MESHER :
 	{
-		Chunk->GetRender()->Polygonize();
+		if (Chunk->HasRender())
+			Chunk->GetRender()->Polygonize();
 		break;
 	}
 	default :

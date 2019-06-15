@@ -53,6 +53,13 @@ public:
 	void SetBlockDef(int X, int Y, int Z, UBlock* Block);
 };
 
+template<typename T>
+class IVOXEL_TERRAIN_API FNonDeleter
+{
+public:
+	inline void operator() (T* Type) {};
+};
+
 class IVOXEL_TERRAIN_API UVoxelChunk
 {
 protected:
@@ -67,9 +74,15 @@ protected:
 	FFaceVisiblityCache FaceVisiblityCache[VOX_CHUNKSIZE_ARRAY];
 
 	EChunkState ChunkState = EChunkState::CS_Invalid;
+
 	FCriticalSection ChunkStateLock;
+	FCriticalSection AdjacentCacheLock;
 
 	FChunkUniversalThread* UniversalThread = nullptr;
+
+	TSharedPtr<UVoxelChunk> ThisSharedPtr;
+	
+	TMap<FIntVector, TPair<TWeakPtr<UVoxelChunk>, UVoxelChunk*>> AdjacentCache;
 
 public:
 	//Can be null
@@ -108,13 +121,21 @@ public:
 	void SetBlock(FBlockPos Pos, UBlock* Block, bool DoUpdate = true);
 	UBlock* GetBlock(FBlockPos Pos);
 
-	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos& Pos);
+	inline FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos& Pos)
+	{
+		//check(Pos.GetChunk() == this);
+		return FaceVisiblityCache[Pos.ArrayIndex()];
+	}
 
 	inline void UpdateBlock(FBlockPos& Pos);
 	inline void UpdateFaceVisiblity(FBlockPos& Pos);
 
 	void GetAdjacentChunks(TArray<UVoxelChunk*>& Ret);
 	void GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret);
+
+	void GetAdjacentChunksImpl(TArray<FIntVector>& Poses, TArray<UVoxelChunk*>& Ret);
+
+	UVoxelChunk* GetAdjacentChunkByFace(EBlockFace Face);
 
 	bool ShouldBeRendered();
 	bool ShouldBeTicked();
@@ -126,6 +147,8 @@ public:
 	void QueuePostWorldGeneration();
 	void QueueFaceVisiblityUpdate();
 	void QueuePolygonize();
+
+	TWeakPtr<UVoxelChunk> GetWeakPtr();
 
 //Chunk state related functions
 public:
@@ -154,13 +177,13 @@ public:
 		return (ChunkPosition + FIntVector(1)) * VOX_CHUNKSIZE - FIntVector(1);
 	}
 
-	inline bool IsInChunk(FIntVector GlobalPos)
+	inline bool IsInChunk(FIntVector& GlobalPos)
 	{
 		FIntVector Min = GetGlobalPosition_Min();
 		FIntVector Max = GetGlobalPosition_Max();
-		return GlobalPos.X >= Min.X && GlobalPos.X < Max.X
-			&& GlobalPos.Y >= Min.Y && GlobalPos.Y < Max.Y
-			&& GlobalPos.Z >= Min.Z && GlobalPos.Z < Max.Z;
+		return GlobalPos.X >= Min.X && GlobalPos.X <= Max.X
+			&& GlobalPos.Y >= Min.Y && GlobalPos.Y <= Max.Y
+			&& GlobalPos.Z >= Min.Z && GlobalPos.Z <= Max.Z;
 	}
 
     FIntVector LocalToGlobalPosition(FIntVector LocalPos);

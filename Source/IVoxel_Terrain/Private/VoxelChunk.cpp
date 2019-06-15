@@ -6,10 +6,11 @@
 #include "BlockStateStorage.h"
 
 //The problem is:
-//TOO MANY NEW OPERATOR BECAUSE OF QUEUING JOBS
+//IDK!!!!!!!!
 
 UVoxelChunk::UVoxelChunk()
 {
+	ThisSharedPtr = TSharedPtr<UVoxelChunk>(this, FNonDeleter<UVoxelChunk>());
 }
 
 UVoxelChunk::~UVoxelChunk()
@@ -229,12 +230,6 @@ UBlock* UVoxelChunk::GetBlock(FBlockPos Pos)
 	return BlockStorage->GetBlock(Pos.ArrayIndex());
 }
 
-FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)
-{
-	//check(Pos.GetChunk() == this);
-	return FaceVisiblityCache[Pos.ArrayIndex()];
-}
-
 void UVoxelChunk::UpdateBlock(FBlockPos& Pos)
 {
 	//Update face visiblity cache
@@ -254,7 +249,7 @@ inline void UVoxelChunk::UpdateFaceVisiblity(FBlockPos& Pos)
 	{
 		FBlockPos NextPos = FBlockPos(Pos);
 		NextPos.GlobalPos += FVoxelUtilities::GetFaceOffset(Face);
-		auto NextChunk = NextPos.GetChunk();
+		auto NextChunk = IsInChunk(NextPos.GlobalPos) ? this : GetAdjacentChunkByFace(Face);
 		auto& NextVisiblity = NextChunk->GetFaceVisiblityCache(NextPos);
 		const int NextType = NextChunk->GetBlock(NextPos)->OpaqueType();
 
@@ -271,14 +266,15 @@ inline void UVoxelChunk::UpdateFaceVisiblity(FBlockPos& Pos)
 void UVoxelChunk::GetAdjacentChunks(TArray<UVoxelChunk*>& Ret)
 {
 	TArray<FIntVector> Poses;
-	Poses.Add(ChunkPosition + FIntVector(1, 0, 0));
-	Poses.Add(ChunkPosition + FIntVector(-1, 0, 0));
-	Poses.Add(ChunkPosition + FIntVector(0, 1, 0));
-	Poses.Add(ChunkPosition + FIntVector(0, -1, 0));
-	Poses.Add(ChunkPosition + FIntVector(0, 0, 1));
-	Poses.Add(ChunkPosition + FIntVector(0, 0, -1));
 
-	World->GetChunksFromIndices(Poses, Ret);
+	Poses.Add(FIntVector(1, 0, 0));
+	Poses.Add(FIntVector(-1, 0, 0));
+	Poses.Add(FIntVector(0, 1, 0));
+	Poses.Add(FIntVector(0, -1, 0));
+	Poses.Add(FIntVector(0, 0, 1));
+	Poses.Add(FIntVector(0, 0, -1));
+
+	GetAdjacentChunksImpl(Poses, Ret);
 }
 
 void UVoxelChunk::GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret)
@@ -293,7 +289,51 @@ void UVoxelChunk::GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret)
 		FIntVector Pos = FIntVector(X, Y, Z);
 		Poses.Add(Pos + ChunkPosition);
 	}
-	World->GetChunksFromIndices(Poses, Ret);
+	GetAdjacentChunksImpl(Poses, Ret);
+}
+
+void UVoxelChunk::GetAdjacentChunksImpl(TArray<FIntVector>& Poses, TArray<UVoxelChunk*>& Ret)
+{
+	FScopeLock Lock(&AdjacentCacheLock);
+
+	TArray<FIntVector> NotFound;
+	for (auto& Pos : Poses)
+	{
+		FIntVector AdjacentKey = Pos;
+		auto Chunk = AdjacentCache.Find(AdjacentKey);
+		if (Chunk && Chunk->Key.IsValid())
+		{
+			Ret.Add(Chunk->Value);
+		}
+		else
+		{
+			NotFound.Add(Pos + ChunkPosition);
+		}
+	}
+
+	TArray<UVoxelChunk*> NotFoundRet;
+	World->GetChunksFromIndices(NotFound, NotFoundRet);
+	for (auto& Chunk : NotFoundRet)
+	{
+		FIntVector AdjacentKey = Chunk->GetChunkPosition() - ChunkPosition;
+		AdjacentCache.Add(AdjacentKey, MakeTuple(Chunk->GetWeakPtr(), Chunk));
+	}
+	Ret.Append(NotFoundRet);
+}
+
+UVoxelChunk* UVoxelChunk::GetAdjacentChunkByFace(EBlockFace Face)
+{
+	FIntVector Key = FVoxelUtilities::GetFaceOffset(Face);
+	{
+		FScopeLock Lock(&AdjacentCacheLock);
+		auto Find = AdjacentCache.Find(Key);
+		if (Find && Find->Key.IsValid()) return Find->Value;
+	}
+	TArray<FIntVector> Poses;
+	TArray<UVoxelChunk*> Ret;
+	Poses.Add(Key);
+	GetAdjacentChunksImpl(Poses, Ret);
+	return Ret[0];
 }
 
 bool UVoxelChunk::ShouldBeRendered()
@@ -333,6 +373,7 @@ bool UVoxelChunk::ShouldPostGenerate()
 {
 	if (WorldGenState == EWorldGenState::VISIBLITY_UPDATED && World->ShouldChunkRendered(this))
 	{
+		return true;
 		bool Result = true;
 		TArray<UVoxelChunk*> AdjChunks;
 		GetAdjacentChunks_Corner(AdjChunks);
@@ -384,13 +425,18 @@ void UVoxelChunk::QueuePostWorldGeneration()
 void UVoxelChunk::QueueFaceVisiblityUpdate()
 {
 	UniversalThread->InitThreadType(EUniversalThreadType::VISIBLITY);
-	World->QueueJob(UniversalThread, EThreadPoolToUse::RENDER);
+	World->QueueJob(UniversalThread, EThreadPoolToUse::WORLDGEN);
 }
 
 void UVoxelChunk::QueuePolygonize()
 {
 	UniversalThread->InitThreadType(EUniversalThreadType::MESHER);
 	World->QueueJob(UniversalThread, EThreadPoolToUse::RENDER);
+}
+
+TWeakPtr<UVoxelChunk> UVoxelChunk::GetWeakPtr()
+{
+	return ThisSharedPtr;
 }
 
 AVoxelWorld* UVoxelChunk::GetVoxelWorld()
