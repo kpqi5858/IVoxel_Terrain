@@ -55,8 +55,3 @@ UVoxelChunk* FBlockPos::GetChunk() const
 	return World->GetChunkFromBlockPos(*this);
 }
 
-int FBlockPos::ArrayIndex() const
-{
-	FIntVector ChunkLocalPos = GetLocalPos();
-	return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);
-}

@@ -357,3 +357,52 @@ void FVoxelChunkLoaderThread::DoThreadedWork()
 void FVoxelChunkLoaderThread::Abandon()
 {
 }
+
+FChunkUniversalThread::FChunkUniversalThread(UVoxelChunk* Chunk)
+	: Chunk(Chunk)
+{
+}
+
+void FChunkUniversalThread::InitThreadType(EUniversalThreadType Type)
+{
+	check(IsDone);
+	IsDone = false;
+	ThreadType = Type;
+}
+
+void FChunkUniversalThread::DoThreadedWork()
+{
+	switch (ThreadType)
+	{
+	case EUniversalThreadType::WORLDGEN_PRE :
+	{
+		Chunk->GenerateWorld();
+		break;
+	}
+	case EUniversalThreadType::WORLDGEN_POST :
+	{
+		Chunk->PostGenerateWorld();
+		break;
+	}
+	case EUniversalThreadType::VISIBLITY :
+	{
+		Chunk->UpdateFaceVisiblityAll();
+		break;
+	}
+	case EUniversalThreadType::MESHER :
+	{
+		Chunk->GetRender()->Polygonize();
+		break;
+	}
+	default :
+	{
+		check(false);
+		break;
+	}
+	}
+	IsDone = true;
+}
+
+void FChunkUniversalThread::Abandon()
+{
+}

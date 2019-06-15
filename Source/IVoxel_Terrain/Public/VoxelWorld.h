@@ -17,6 +17,7 @@ struct FVoxelInvoker;
 struct FBlockPos;
 class FMyQueuedThreadPool;
 class FVoxelChunkLoaderThread;
+class IMyQueuedWork;
 
 class FScopeTimer
 {
@@ -39,6 +40,11 @@ public:
 			ensureMsgf(false, TEXT("%f / %f"), Threshold, RealDur);
 		}
 	}
+};
+
+enum class EThreadPoolToUse : uint8
+{
+	INVALID, WORLDGEN, RENDER
 };
 
 UCLASS()
@@ -73,10 +79,7 @@ public:
 	int ChunkUpdateThreshold = 100;
 
 private:
-	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> LoadedChunk;
-
-	TMap<FIntVector, UVoxelChunk*> LoadedChunk_Internal;
 
 	TSet<UVoxelChunk*> TickListCache;
 
@@ -153,12 +156,10 @@ public:
 
 	//It can create chunk
 	UVoxelChunk* GetChunkFromIndex(FIntVector Pos, bool DoLock = true);
-	UFUNCTION(BlueprintCallable)
 	UVoxelChunk* GetChunkFromBlockPos(FBlockPos Pos, bool DoLock = true);
 
 	//Maybe faster (Fewer lock)
 	void GetChunksFromIndices(TArray<FIntVector>& Pos, TArray<UVoxelChunk*>& Result);
-
 
 	UFUNCTION(BlueprintCallable)
 	FIntVector WorldPosToVoxelPos(FVector Pos);
@@ -166,13 +167,9 @@ public:
 	bool ShouldChunkRendered(UVoxelChunk* Chunk);
 	bool ShouldGenerateWorld(UVoxelChunk* Chunk);
 
-	void QueueWorldGeneration(UVoxelChunk* Chunk);
-	void QueuePostWorldGeneration(UVoxelChunk* Chunk);
-	void QueueUpdateFaceVisiblity(UVoxelChunk* Chunk);
+	void QueueJob(IMyQueuedWork* Work, EThreadPoolToUse ThreadPool);
 
 	void QueueChunkInit();
-
-	void QueuePolygonize(AVoxelChunkRender* Render);
 
 	float GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render);
 

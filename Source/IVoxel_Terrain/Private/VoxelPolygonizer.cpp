@@ -9,10 +9,10 @@ FVoxelPolygonizer::FVoxelPolygonizer(UVoxelChunk* ChunkToRender)
 
 void FVoxelPolygonizer::DoPolygonize()
 {
-	ensureAlways(!IsFinished);
+	check(!IsFinished);
 	IsFinished = false;
 
-	PolygonizedData = new FVoxelPolygonizedData();
+	PolygonizedData = MakeShareable(new FVoxelPolygonizedData);
 
 	TArray<UMaterialInterface*> Materials;
 
@@ -26,8 +26,7 @@ void FVoxelPolygonizer::DoPolygonize()
 	{
 		const FIntVector LocalPos = FIntVector(X, Y, Z);
 		FBlockPos BlockPos = FBlockPos(Chunk, LocalPos);
-		const auto ThisBlock = Chunk->GetBlockState(BlockPos);
-		const auto BlockDef = ThisBlock->GetBlockDef();
+		const auto BlockDef = Chunk->GetBlock(BlockPos);
 
 		int SectionNum = Materials.IndexOfByKey(BlockDef->GetMaterial());
 		if (SectionNum == INDEX_NONE)
@@ -59,7 +58,7 @@ bool FVoxelPolygonizer::IsDone()
 	return IsFinished;
 }
 
-FVoxelPolygonizedData* FVoxelPolygonizer::PopPolygonizedData()
+TSharedPtr<FVoxelPolygonizedData> FVoxelPolygonizer::PopPolygonizedData()
 {
 	check(IsFinished);
 	IsFinished = false;

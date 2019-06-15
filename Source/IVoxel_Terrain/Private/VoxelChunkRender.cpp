@@ -10,8 +10,6 @@ AVoxelChunkRender::AVoxelChunkRender()
 
 AVoxelChunkRender::~AVoxelChunkRender()
 {
-	if (PolygonizedData)
-		delete PolygonizedData;
 }
 
 void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
@@ -21,7 +19,8 @@ void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 	TheChunk = Chunk;
 	Initialized = true;
 	CustomMesh->SetVisibility(true);
-	Polygonizer = new FVoxelPolygonizer(Chunk);
+	Polygonizer = MakeShareable(new FVoxelPolygonizer(TheChunk));
+
 	SetActorLocation(FVector(Chunk->GetGlobalPosition_Min()) * Chunk->GetVoxelWorld()->GetVoxelSize());
 
 	//Use async physics cooking
@@ -38,6 +37,8 @@ void AVoxelChunkRender::DestroyRender()
 	CustomMesh->SetVisibility(false);
 	TheChunk = nullptr;
 	Initialized = false;
+
+	PolygonizedData.Reset();
 }
 
 bool AVoxelChunkRender::IsInitialized()
@@ -54,37 +55,37 @@ bool AVoxelChunkRender::IsPolygonizingNow()
 	return IsPolygonizing;
 }
 
+
 void AVoxelChunkRender::RenderTick()
 {
 	check(Initialized);
 	if (Polygonizer->IsDone())
 	{
-		if (PolygonizedData) delete PolygonizedData;
 		PolygonizedData = Polygonizer->PopPolygonizedData();
 		IsPolygonizing = false;
 	}
 
-	if (PolygonizedData && VoxelWorld->ShouldUpdateChunk())
+	if (PolygonizedData.IsValid() && VoxelWorld->ShouldUpdateChunk())
 	{
-		ApplyPolygonizedData(PolygonizedData);
-		delete PolygonizedData;
-		PolygonizedData = nullptr;
+		ApplyPolygonizedData(PolygonizedData.Get());
+		PolygonizedData.Reset();
 	}
 
 }
 
 void AVoxelChunkRender::Polygonize()
 {
-	//Polygonizer thread is still remaining after deiniting this
+	//Polygonizer thread can still remain after deiniting this
 	if (!Initialized) return;
-
-	if (IsPolygonizing) return;
-	IsPolygonizing = true;
 	Polygonizer->DoPolygonize();
 }
 
 void AVoxelChunkRender::RenderRequest()
 {
+	if (IsPolygonizing) return;
+	IsPolygonizing = true;
+
+	TheChunk->QueuePolygonize();
 }
 
 void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)

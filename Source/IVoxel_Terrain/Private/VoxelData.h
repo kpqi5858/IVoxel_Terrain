@@ -200,7 +200,11 @@ public:
 	UVoxelChunk* GetChunk() const;
 
 public:
-	int ArrayIndex() const;
+	FORCEINLINE int ArrayIndex() const
+	{
+		FIntVector ChunkLocalPos = GetLocalPos();
+		return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);
+	}
 };
 
 struct FFaceVisiblityCache

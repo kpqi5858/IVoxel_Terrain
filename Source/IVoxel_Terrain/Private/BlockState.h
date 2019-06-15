@@ -10,10 +10,11 @@ class UBlock;
 enum class EBlockFace : uint8;
 struct FBlockPos;
 
+//19 Byte
 class FBlockState
 {
 public:
-	FBlockPos Position;
+	const uint16 PositionIndex;
 
 	EBlockFace Facing;
 
@@ -24,10 +25,24 @@ private:
 
 public:
 	FBlockState();
-	FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block = nullptr);
+	FBlockState(UVoxelChunk* OwnerChunk, uint16 PosIndex, UBlock* Block = nullptr);
 
 	UBlock* GetBlockDef();
 	void SetBlockDef(UBlock* Block);
 
+	FBlockPos GetBlockPos();
+
 	bool IsValid();
+};
+
+//Additional block info
+//Ex) Color, Plant growth state, etc..
+struct FBlockData
+{
+	uint8 Data[VOX_BLOCKDATASIZE];
+
+	FBlockData()
+	{
+		FMemory::Memset(Data, 0, sizeof(Data));
+	}
 };

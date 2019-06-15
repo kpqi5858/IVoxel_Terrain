@@ -1,8 +1,12 @@
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
+#include "VoxelThreads.h"
 #include "VoxelChunkRender.h"
 #include "WorldGenerator.h"
 #include "BlockStateStorage.h"
+
+//The problem is:
+//TOO MANY NEW OPERATOR BECAUSE OF QUEUING JOBS
 
 UVoxelChunk::UVoxelChunk()
 {
@@ -10,14 +14,12 @@ UVoxelChunk::UVoxelChunk()
 
 UVoxelChunk::~UVoxelChunk()
 {
-	if (BlockStateStorage) delete BlockStateStorage;
-	if (FaceVisiblityCache) delete FaceVisiblityCache;
+	if (BlockStorage) delete BlockStorage;
+	if (UniversalThread) delete UniversalThread;
 }
 
 void UVoxelChunk::ChunkTick()
 {
-	check(!IsUnreachable());
-
 	bool RenderedFlag = ShouldBeRendered();
 
 	if (RenderedFlag)
@@ -33,19 +35,19 @@ void UVoxelChunk::ChunkTick()
 	if (ShouldUpdateFaceVisiblity())
 	{
 		WorldGenState = EWorldGenState::VISIBLITY_UPDATING;
-		World->QueueUpdateFaceVisiblity(this);
+		QueueFaceVisiblityUpdate();
 	}
 
 	if (WorldGenState == EWorldGenState::NOT_GENERATED && World->ShouldGenerateWorld(this))
 	{
 		WorldGenState = EWorldGenState::GENERTING_PRIME;
-		World->QueueWorldGeneration(this);
+		QueuePreWorldGeneration();
 	}
 	
 	if (ShouldPostGenerate())
 	{
 		WorldGenState = EWorldGenState::GENERATING_POST;
-		World->QueuePostWorldGeneration(this);
+		QueuePostWorldGeneration();
 	}
 	
 	//Out of range
@@ -77,7 +79,7 @@ void UVoxelChunk::ChunkTick()
 		if (RenderDirty && !RenderActor->IsPolygonizingNow())
 		{
 			RenderDirty = false;
-			World->QueuePolygonize(RenderActor);
+			RenderActor->RenderRequest();
 		}
 	}
 }
@@ -89,15 +91,11 @@ void UVoxelChunk::Initialize(AVoxelWorld* VoxelWorld, FIntVector ChunkIndex)
 
 	WorldGenerator = VoxelWorld->GetWorldGenerator();
 
-	FaceVisiblityCache = new TBasicAbstractBlockStorage<FFaceVisiblityCache>();
-	FaceVisiblityCache->Initialize();
+	FMemory::Memset(FaceVisiblityCache, 0, sizeof(FaceVisiblityCache));
 
-	BlockStateStorage = new TBasicAbstractBlockStorage<FBlockState>();
-	BlockStateStorage->Initialize(
-	[&](int Index)
-	{
-		return (void*) new FBlockState(this, FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index)));
-	});
+	BlockStorage = new FBasicBlockStorage();
+
+	UniversalThread = new FChunkUniversalThread(this);
 }
 
 void UVoxelChunk::InitRender()
@@ -137,14 +135,12 @@ void UVoxelChunk::PostGenerateWorld()
 
 void UVoxelChunk::UpdateFaceVisiblityAll()
 {
-	FaceVisiblityCache->Lock();
 	for (int Index = 0; Index < VOX_CHUNKSIZE_ARRAY; Index++)
 	{
 		FBlockPos Pos = FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index));
 		UpdateFaceVisiblity(Pos);
 	}
 	WorldGenState = EWorldGenState::VISIBLITY_UPDATED;
-	FaceVisiblityCache->UnLock();
 }
 
 void UVoxelChunk::ProcessPrimeChunk()
@@ -154,21 +150,20 @@ void UVoxelChunk::ProcessPrimeChunk()
 	{
 		FBlockPos Pos = FBlockPos(this, FVoxelUtilities::PositionFromIndex(Index));
 		UBlock* Block = PrimeChunk.Blocks[Index];
-		UBlock* Old = GetBlockState(Pos)->GetBlockDef();
-		if (Old == Block) continue; //SERIOUS TYPO
-		ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); }, false);
+
+		SetBlock(Pos, Block, false);
 	}
 	BlockStateStorageUnlock();
 }
 
 void UVoxelChunk::BlockStateStorageLock()
 {
-	BlockStateStorage->Lock();
+	BlockStorage->Lock();
 }
 
 void UVoxelChunk::BlockStateStorageUnlock()
 {
-	BlockStateStorage->UnLock();
+	BlockStorage->UnLock();
 }
 
 EChunkState UVoxelChunk::GetChunkState()
@@ -219,36 +214,25 @@ bool UVoxelChunk::IsValidChunk()
 	return ChunkState != EChunkState::CS_Invalid && ChunkState != EChunkState::CS_QueuedDeletion;
 }
 
-FBlockState* UVoxelChunk::GetBlockState(FBlockPos& Pos)
+void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block, bool DoUpdate)
 {
-	//check(Pos.GetChunk() == this);
-	return BlockStateStorage->Get(Pos.ArrayIndex());
-}
-
-void UVoxelChunk::ModifyBlockState(FBlockPos& Pos, StateModifyFunction Func, bool SetDirty)
-{
-	FBlockState* State = GetBlockState(Pos);
-	Func(State);
-	if (SetDirty)
-	{
-		SetRenderDirty();
-		UpdateBlock(Pos);
-	}
-}
-
-void UVoxelChunk::SetBlock(FBlockPos Pos, UBlock* Block)
-{
-	UBlock* Old = GetBlockState(Pos)->GetBlockDef();
+	UBlock* Old = GetBlock(Pos);
 	if (Old == Block) return;
 	BlockStateStorageLock();
-	ModifyBlockState(Pos, [&](FBlockState* State) {State->SetBlockDef(Block); });
+	BlockStorage->SetBlock(Pos.ArrayIndex(), Block);
 	BlockStateStorageUnlock();
+	if (DoUpdate) UpdateBlock(Pos);
+}
+
+UBlock* UVoxelChunk::GetBlock(FBlockPos Pos)
+{
+	return BlockStorage->GetBlock(Pos.ArrayIndex());
 }
 
 FFaceVisiblityCache& UVoxelChunk::GetFaceVisiblityCache(FBlockPos& Pos)
 {
 	//check(Pos.GetChunk() == this);
-	return *FaceVisiblityCache->Get(Pos.ArrayIndex());
+	return FaceVisiblityCache[Pos.ArrayIndex()];
 }
 
 void UVoxelChunk::UpdateBlock(FBlockPos& Pos)
@@ -260,7 +244,7 @@ void UVoxelChunk::UpdateBlock(FBlockPos& Pos)
 inline void UVoxelChunk::UpdateFaceVisiblity(FBlockPos& Pos)
 {
 	auto& ThisVisiblity = GetFaceVisiblityCache(Pos);
-	const int ThisType = GetBlockState(Pos)->GetBlockDef()->OpaqueType();
+	const int ThisType = GetBlock(Pos)->OpaqueType();
 
 	ThisVisiblity.Data = 0;
 
@@ -272,7 +256,7 @@ inline void UVoxelChunk::UpdateFaceVisiblity(FBlockPos& Pos)
 		NextPos.GlobalPos += FVoxelUtilities::GetFaceOffset(Face);
 		auto NextChunk = NextPos.GetChunk();
 		auto& NextVisiblity = NextChunk->GetFaceVisiblityCache(NextPos);
-		const int NextType = NextChunk->GetBlockState(NextPos)->GetBlockDef()->OpaqueType();
+		const int NextType = NextChunk->GetBlock(NextPos)->OpaqueType();
 
 		const bool IsVisible = ThisType != NextType;
 		const bool ThisVisible = ThisType && IsVisible;
@@ -385,6 +369,30 @@ bool UVoxelChunk::ShouldUpdateFaceVisiblity()
 	return Result;
 }
 
+void UVoxelChunk::QueuePreWorldGeneration()
+{
+	UniversalThread->InitThreadType(EUniversalThreadType::WORLDGEN_PRE);
+	World->QueueJob(UniversalThread, EThreadPoolToUse::WORLDGEN);
+}
+
+void UVoxelChunk::QueuePostWorldGeneration()
+{
+	UniversalThread->InitThreadType(EUniversalThreadType::WORLDGEN_POST);
+	World->QueueJob(UniversalThread, EThreadPoolToUse::WORLDGEN);
+}
+
+void UVoxelChunk::QueueFaceVisiblityUpdate()
+{
+	UniversalThread->InitThreadType(EUniversalThreadType::VISIBLITY);
+	World->QueueJob(UniversalThread, EThreadPoolToUse::RENDER);
+}
+
+void UVoxelChunk::QueuePolygonize()
+{
+	UniversalThread->InitThreadType(EUniversalThreadType::MESHER);
+	World->QueueJob(UniversalThread, EThreadPoolToUse::RENDER);
+}
+
 AVoxelWorld* UVoxelChunk::GetVoxelWorld()
 {
 	return World;
@@ -397,6 +405,7 @@ FIntVector UVoxelChunk::GetChunkPosition()
 
 AVoxelChunkRender* UVoxelChunk::GetRender()
 {
+	check(RenderActor);
 	return RenderActor;
 }
 

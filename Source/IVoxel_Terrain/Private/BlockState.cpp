@@ -1,11 +1,12 @@
 #include "BlockState.h"
 
 FBlockState::FBlockState()
+	: PositionIndex(0)
 {
 }
 
-FBlockState::FBlockState(UVoxelChunk* OwnerChunk, FBlockPos Pos, UBlock* Block)
-	: Position(Pos)
+FBlockState::FBlockState(UVoxelChunk* OwnerChunk, uint16 PosIndex, UBlock* Block)
+	: PositionIndex(PosIndex)
 {
 	Facing = EBlockFace::INVALID;
 	if (!Block)
@@ -24,6 +25,11 @@ UBlock* FBlockState::GetBlockDef()
 void FBlockState::SetBlockDef(UBlock* Block)
 {
 	BlockDef = Block;
+}
+
+FBlockPos FBlockState::GetBlockPos()
+{
+	return FBlockPos(Chunk, FVoxelUtilities::PositionFromIndex(PositionIndex));
 }
 
 bool FBlockState::IsValid()

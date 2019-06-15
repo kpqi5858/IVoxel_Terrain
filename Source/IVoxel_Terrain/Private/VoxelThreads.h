@@ -216,3 +216,30 @@ public:
 		return 10;
 	}
 };
+
+enum class EUniversalThreadType : uint8
+{
+	INVALID, WORLDGEN_PRE, VISIBLITY, WORLDGEN_POST, MESHER
+};
+
+class FChunkUniversalThread : public IMyQueuedWork
+{
+public:
+	FChunkUniversalThread(UVoxelChunk* Chunk);
+
+	UVoxelChunk* Chunk;
+	EUniversalThreadType ThreadType = EUniversalThreadType::INVALID;
+	int Priority = 0;
+
+	bool IsDone = true;
+
+	void InitThreadType(EUniversalThreadType Type);
+
+	void DoThreadedWork() override;
+	void Abandon() override;
+
+	int GetPriority() const override
+	{
+		return Priority;
+	}
+};

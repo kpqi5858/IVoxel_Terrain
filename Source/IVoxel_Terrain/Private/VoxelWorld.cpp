@@ -34,6 +34,14 @@ void AVoxelWorld::Destroy()
 	delete WorldGeneratorThreadPool;
 
 	delete ChunkLoaderThread;
+
+	TArray<UVoxelChunk*> ChunkToDelete;
+	LoadedChunk.GenerateValueArray(ChunkToDelete);
+
+	for (auto& Chunk : ChunkToDelete)
+	{
+		delete Chunk;
+	}
 }
 
 void AVoxelWorld::Tick(float DeltaSeconds)
@@ -178,7 +186,7 @@ AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
 
 UVoxelChunk* AVoxelWorld::CreateVoxelChunk(FIntVector Index)
 {
-	auto NewChunk = NewObject<UVoxelChunk>(this);
+	auto NewChunk = new UVoxelChunk();
 	NewChunk->Initialize(this, Index);
 	return NewChunk;
 }
@@ -205,8 +213,8 @@ void AVoxelWorld::FreeRenderActor(AVoxelChunkRender* RenderActor)
 void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
-	PolygonizerThreadPool->Create(PolygonizerThreads, 2048*2048);
-	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048);
+	PolygonizerThreadPool->Create(PolygonizerThreads, 2048 * 2048);
+	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048, EThreadPriority::TPri_SlightlyBelowNormal);
 	VoxelSizeInit = VoxelSize;
 	FBlockRegistry::ReloadBlocks();
 	RegistryReference = FBlockRegistry::GetInstance();
@@ -412,29 +420,30 @@ bool AVoxelWorld::ShouldGenerateWorld(UVoxelChunk* Chunk)
 	return Result;
 }
 
-void AVoxelWorld::QueueWorldGeneration(UVoxelChunk* Chunk)
+void AVoxelWorld::QueueJob(IMyQueuedWork* Work, EThreadPoolToUse ThreadPool)
 {
-	WorldGeneratorThreadPool->AddQueuedWork(new FWorldGeneratorThread(Chunk));
-}
-
-void AVoxelWorld::QueuePostWorldGeneration(UVoxelChunk* Chunk)
-{
-	WorldGeneratorThreadPool->AddQueuedWork(new FPostWorldGeneratorThread(Chunk));
-}
-
-void AVoxelWorld::QueueUpdateFaceVisiblity(UVoxelChunk* Chunk)
-{
-	PolygonizerThreadPool->AddQueuedWork(new FUpdateVisiblityThread(Chunk));
+	switch (ThreadPool)
+	{
+	case EThreadPoolToUse::RENDER :
+	{
+		PolygonizerThreadPool->AddQueuedWork(Work);
+		break;
+	}
+	case EThreadPoolToUse::WORLDGEN :
+	{
+		WorldGeneratorThreadPool->AddQueuedWork(Work);
+		break;
+	}
+	default:
+	{
+		checkf(false, TEXT("Invalid EThreadPoolToUse : %d"), static_cast<int>(ThreadPool));
+	}
+	}
 }
 
 void AVoxelWorld::QueueChunkInit()
 {
 	WorldGeneratorThreadPool->AddQueuedWork(ChunkLoaderThread);
-}
-
-void AVoxelWorld::QueuePolygonize(AVoxelChunkRender* Render)
-{
-	PolygonizerThreadPool->AddQueuedWork(new FVoxelPolygonizerThread(Render));
 }
 
 float AVoxelWorld::GetDistanceToInvoker(UVoxelChunk* Chunk, bool Render)

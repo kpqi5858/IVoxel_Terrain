@@ -6,7 +6,7 @@ class IVOXEL_TERRAIN_API FVoxelPolygonizer
 {
 private:
 	UVoxelChunk* Chunk = nullptr;
-	FVoxelPolygonizedData* PolygonizedData = nullptr;
+	TSharedPtr<FVoxelPolygonizedData> PolygonizedData;
 
 	bool IsFinished = false;
 
@@ -19,7 +19,7 @@ public:
 
 	bool IsDone();
 	//Also sets IsFinished flag to false
-	FVoxelPolygonizedData* PopPolygonizedData();
+	TSharedPtr<FVoxelPolygonizedData> PopPolygonizedData();
 
 private:
 	inline bool IsThisFaceVisible(FBlockPos Pos, EBlockFace Face);

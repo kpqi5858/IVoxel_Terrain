@@ -11,9 +11,9 @@ class AVoxelWorld;
 class FBlockState;
 class AVoxelChunkRender;
 class UVoxelWorldGenerator;
-template<typename T>
-class TAbstractBlockStorage;
+class FAbstractBlockStorage;
 struct FBlockPos;
+class FChunkUniversalThread;
 
 typedef TFunction<void(FBlockState*)> StateModifyFunction;
 
@@ -53,31 +53,26 @@ public:
 	void SetBlockDef(int X, int Y, int Z, UBlock* Block);
 };
 
-//184KB
-//Or, Nearly 200KB including(assuming) UObject
-UCLASS(Blueprintable)
-class IVOXEL_TERRAIN_API UVoxelChunk : public UObject
+class IVOXEL_TERRAIN_API UVoxelChunk
 {
-    GENERATED_BODY()
-
 protected:
     FIntVector ChunkPosition;
     AVoxelWorld* World;
 
     bool RenderDirty = false;
 
-	UPROPERTY()
 	UVoxelWorldGenerator* WorldGenerator;
 
-	TAbstractBlockStorage<FBlockState>* BlockStateStorage = nullptr;
-	TAbstractBlockStorage<FFaceVisiblityCache>* FaceVisiblityCache = nullptr;
+	FAbstractBlockStorage* BlockStorage;
+	FFaceVisiblityCache FaceVisiblityCache[VOX_CHUNKSIZE_ARRAY];
 
 	EChunkState ChunkState = EChunkState::CS_Invalid;
 	FCriticalSection ChunkStateLock;
 
+	FChunkUniversalThread* UniversalThread = nullptr;
+
 public:
 	//Can be null
-	UPROPERTY()
 	AVoxelChunkRender* RenderActor = nullptr;
 
 	FThreadSafeCounter WorldGeneratorsReferences;
@@ -88,7 +83,7 @@ public:
 
 public:
     UVoxelChunk();
-	~UVoxelChunk();
+	virtual ~UVoxelChunk();
 
     virtual void ChunkTick();
 
@@ -110,11 +105,8 @@ public:
 
 	bool IsValidChunk();
 
-	FBlockState* GetBlockState(FBlockPos& Pos);
-	inline void ModifyBlockState(FBlockPos& Pos, StateModifyFunction Func, bool SetDirty = true);
-
-	UFUNCTION(BlueprintCallable)
-	void SetBlock(FBlockPos Pos, UBlock* Block);
+	void SetBlock(FBlockPos Pos, UBlock* Block, bool DoUpdate = true);
+	UBlock* GetBlock(FBlockPos Pos);
 
 	FFaceVisiblityCache& GetFaceVisiblityCache(FBlockPos& Pos);
 
@@ -130,6 +122,10 @@ public:
 	bool ShouldPostGenerate();
 	bool ShouldUpdateFaceVisiblity();
 
+	void QueuePreWorldGeneration();
+	void QueuePostWorldGeneration();
+	void QueueFaceVisiblityUpdate();
+	void QueuePolygonize();
 
 //Chunk state related functions
 public:

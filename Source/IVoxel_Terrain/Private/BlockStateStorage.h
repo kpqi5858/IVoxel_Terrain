@@ -4,94 +4,53 @@
 #include "VoxelData.h"
 #include "BlockState.h"
 
-//First parameter is the index of array
-//You can get X,Y,Z from it
-//Returned void pointer will be casted to T*
-typedef TFunction<void*(int)> FStorageCustomInitializer;
-
-template<typename T>
-class TAbstractBlockStorage
+//UBlock storage inside chunk
+class FAbstractBlockStorage
 {
 public:
-	TAbstractBlockStorage()
+	FAbstractBlockStorage()
 	{
-		
+
 	}
-	virtual ~TAbstractBlockStorage()
+	virtual ~FAbstractBlockStorage()
 	{
 
 	};
 
-public:
-	virtual void Initialize(FStorageCustomInitializer Initializer) = 0;
-	//Initializes with default constructor
-	virtual void Initialize() = 0;
-
-	//Gets data
-	virtual T* Get(int Index) = 0;
+	virtual void SetBlock(int Index, UBlock* Block) = 0;
+	virtual UBlock* GetBlock(int Index) = 0;
 
 	virtual void Lock() = 0;
 	virtual void UnLock() = 0;
-
-	virtual void Save(FArchive* Archive) = 0;
-	virtual void Load(FArchive* Archive) = 0;
 };
 
-template<typename T>
-class TBasicAbstractBlockStorage : public TAbstractBlockStorage<T>
+class FBasicBlockStorage : public FAbstractBlockStorage
 {
 protected:
 	FCriticalSection CriticalSection;
 
-	T** InternalStorage = nullptr;
+	UBlock* InternalStorage[VOX_CHUNKSIZE_ARRAY];
 
 public:
-	TBasicAbstractBlockStorage()
+	FBasicBlockStorage()
 	{
-	}
-	virtual ~TBasicAbstractBlockStorage() override
-	{
-		if (InternalStorage)
+		for (auto& Block : InternalStorage)
 		{
-			for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
-			{
-				delete InternalStorage[i];
-			}
-			delete[] InternalStorage;
+			Block = GETBLOCK_C("Air");
 		}
 	}
-
-	virtual void Initialize(FStorageCustomInitializer CustomInitializer)
+	virtual ~FBasicBlockStorage()
 	{
-		checkf(!InternalStorage, TEXT("Storage already initialized"));
+	};
 
-		InternalStorage = new T*[VOX_CHUNKSIZE_ARRAY];
-		FMemory::Memset(InternalStorage, 0, sizeof(T*)*VOX_CHUNKSIZE_ARRAY);
-
-		for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
-		{
-			T* Ptr = reinterpret_cast<T*>(CustomInitializer(i));
-			check(Ptr);
-			InternalStorage[i] = Ptr;
-		}
-	}
-	virtual void Initialize()
+	virtual void SetBlock(int Index, UBlock* Block) override
 	{
-		checkf(!InternalStorage, TEXT("Storage already initialized"));
-
-		InternalStorage = new T*[VOX_CHUNKSIZE_ARRAY];
-		FMemory::Memset(InternalStorage, 0, sizeof(T*)*VOX_CHUNKSIZE_ARRAY);
-
-		for (int i = 0; i < VOX_CHUNKSIZE_ARRAY; i++)
-		{
-			InternalStorage[i] = new T;
-		}
+		check(Index >= 0 && Index < VOX_CHUNKSIZE_ARRAY);
+		InternalStorage[Index] = Block;
 	}
 
-	virtual T* Get(int Index) override
+	virtual UBlock* GetBlock(int Index) override
 	{
-		checkf(InternalStorage, TEXT("Storage not initialized"));
-		checkf(Index >= 0 && Index < VOX_CHUNKSIZE_ARRAY, TEXT("Out of index : %d"), Index);
 		return InternalStorage[Index];
 	}
 
@@ -99,17 +58,16 @@ public:
 	{
 		CriticalSection.Lock();
 	}
+
 	virtual void UnLock() override
 	{
 		CriticalSection.Unlock();
 	}
+};
 
-	//Unimplemented
-	virtual void Save(FArchive* Archive) override
-	{
-	}
-	//Unimplemented
-	virtual void Load(FArchive* Archive) override
-	{
-	}
+//Storage for additional block info
+//Ex) Color, Plant growth state, etc..
+class FBlockDataStorage
+{
+
 };

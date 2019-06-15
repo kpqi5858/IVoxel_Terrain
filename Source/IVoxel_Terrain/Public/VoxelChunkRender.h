@@ -12,7 +12,6 @@ class IVOXEL_TERRAIN_API AVoxelChunkRender : public AActor
 {
 	GENERATED_BODY()
 private:
-	UPROPERTY()
 	UVoxelChunk* TheChunk;
 
 	AVoxelWorld* VoxelWorld;
@@ -21,11 +20,11 @@ private:
 
 	UProceduralMeshComponent* CustomMesh;
 
-	FVoxelPolygonizer* Polygonizer = nullptr;
+	TSharedPtr<FVoxelPolygonizer> Polygonizer;
 
 	FThreadSafeBool IsPolygonizing = false;
 
-	FVoxelPolygonizedData* PolygonizedData = nullptr;
+	TSharedPtr<FVoxelPolygonizedData> PolygonizedData;
 
 public:
 	AVoxelChunkRender();
