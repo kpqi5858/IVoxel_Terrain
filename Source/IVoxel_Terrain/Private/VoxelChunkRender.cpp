@@ -3,7 +3,7 @@
 
 AVoxelChunkRender::AVoxelChunkRender()
 {
-	CustomMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CustomMesh"));
+	CustomMesh = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("CustomMesh"));
 	RootComponent = CustomMesh;
 	TheChunk = nullptr;
 }
@@ -24,7 +24,8 @@ void AVoxelChunkRender::Initialize(UVoxelChunk* Chunk)
 	SetActorLocation(FVector(Chunk->GetGlobalPosition_Min()) * Chunk->GetVoxelWorld()->GetVoxelSize());
 
 	//Use async physics cooking
-	CustomMesh->bUseAsyncCooking = true;
+	//CustomMesh->bUseAsyncCooking = true;
+	CustomMesh->SetCollisionUseAsyncCooking(true);
 
 	VoxelWorld = Chunk->GetVoxelWorld();
 }
@@ -48,7 +49,7 @@ bool AVoxelChunkRender::IsInitialized()
 
 bool AVoxelChunkRender::IsPolygonizingNow()
 {
-	if (Polygonizer->IsDone())
+	if (!Initialized && Polygonizer->IsDone())
 	{
 		IsPolygonizing = false;
 	}
@@ -65,10 +66,24 @@ void AVoxelChunkRender::RenderTick()
 		IsPolygonizing = false;
 	}
 
-	if (PolygonizedData.IsValid() && VoxelWorld->ShouldUpdateChunk())
+	if (PolygonizedData.IsValid())
 	{
-		ApplyPolygonizedData(PolygonizedData.Get());
-		PolygonizedData.Reset();
+		bool Reset = false;
+
+		if (RePolygonize)
+		{
+			RePolygonize = false;
+			TheChunk->SetRenderDirty();
+			Reset = true;
+		}
+		else if (VoxelWorld->ShouldUpdateChunk())
+		{
+			ApplyPolygonizedData(PolygonizedData.Get());
+			Reset = true;
+		}
+
+		if (Reset)
+			PolygonizedData.Reset();
 	}
 
 }
@@ -80,12 +95,15 @@ void AVoxelChunkRender::Polygonize()
 	Polygonizer->DoPolygonize();
 }
 
-void AVoxelChunkRender::RenderRequest()
+FORCENOINLINE void AVoxelChunkRender::RenderRequest()
 {
-	if (IsPolygonizing) return;
-	IsPolygonizing = true;
-
+	if (IsPolygonizing)
+	{
+		RePolygonize = true;
+		return;
+	}
 	TheChunk->QueuePolygonize();
+	IsPolygonizing = true;
 }
 
 void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)
@@ -105,7 +123,7 @@ void AVoxelChunkRender::ApplyPolygonizedData(FVoxelPolygonizedData* Data)
 			CustomMesh->SetMaterial(Index, Section.Material);
 		if (Section.Vertex.Num() < 3 || Section.Triangle.Num() == 0) continue;
 		
-		CustomMesh->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FProcMeshTangent>(), true);
+		CustomMesh->CreateMeshSection(Index, Section.Vertex, Section.Triangle, Section.Normal, Section.UV, Section.Color, TArray<FRuntimeMeshTangent>(), true);
 	}
 }
 

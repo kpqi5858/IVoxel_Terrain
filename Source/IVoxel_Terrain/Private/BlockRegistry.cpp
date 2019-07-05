@@ -13,6 +13,9 @@ FBlockRegistryInstance::FBlockRegistryInstance()
 
 FBlockRegistryInstance::FBlockRegistryInstance(TArray<UClass*> Registry)
 {
+	TArray<FName> RegisteredNames;
+	RegisteredNames.Reserve(Registry.Num());
+
 	for (auto& BlockClass : Registry)
 	{
 		check(BlockClass->IsChildOf(UBlock::StaticClass()) && !BlockClass->HasAnyClassFlags(EClassFlags::CLASS_Abstract));
@@ -32,6 +35,19 @@ FBlockRegistryInstance::FBlockRegistryInstance(TArray<UClass*> Registry)
 			continue;
 		}
 		BlockInstanceRegistry.Add(BlockName, Block);
+		RegisteredNames.Add(BlockName);
+	}
+	check(RegisteredNames.Num() == BlockInstanceRegistry.Num());
+	checkf(RegisteredNames.Num() < 65536, TEXT("UniqueIndex collision, RegisteredNames.Num() = %d"), RegisteredNames.Num());
+
+	RegisteredNames.Sort();
+	UniqueIndices.AddDefaulted(RegisteredNames.Num());
+
+	for (int Index = 0; Index < RegisteredNames.Num(); Index++)
+	{
+		auto Block = BlockInstanceRegistry.FindChecked(RegisteredNames[Index]);
+		Block->UniqueIndex = Index;
+		UniqueIndices[Index] = Block;
 	}
 }
 
@@ -68,6 +84,11 @@ UBlock* FBlockRegistryInstance::GetBlock(FString Name)
 	return GetBlock(FName(*Name));
 }
 
+UBlock* FBlockRegistryInstance::GetBlockByIndex(uint16 Index)
+{
+	return UniqueIndices[Index];
+}
+
 void FBlockRegistry::ReloadBlocks()
 {
 	BlockRegistry.Empty();
@@ -82,6 +103,10 @@ void FBlockRegistry::ReloadBlocks()
 	{
 		//This thing will load every blueprint, which is BAD
 		auto Obj = Asset.GetClass();
+		if (Obj == BlockClass)
+		{
+			Asset.GetAsset();
+		}
 	}
 
 	TArray<UObject*> Objs;

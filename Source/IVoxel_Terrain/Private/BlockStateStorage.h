@@ -19,49 +19,36 @@ public:
 
 	virtual void SetBlock(int Index, UBlock* Block) = 0;
 	virtual UBlock* GetBlock(int Index) = 0;
-
-	virtual void Lock() = 0;
-	virtual void UnLock() = 0;
 };
 
 class FBasicBlockStorage : public FAbstractBlockStorage
 {
 protected:
-	FCriticalSection CriticalSection;
-
-	UBlock* InternalStorage[VOX_CHUNKSIZE_ARRAY];
+	uint16 InternalStorage[VOX_CHUNKSIZE_ARRAY];
 
 public:
 	FBasicBlockStorage()
 	{
+		uint16 AirIndex = GETBLOCK_C("Air")->UniqueIndex;
+
 		for (auto& Block : InternalStorage)
 		{
-			Block = GETBLOCK_C("Air");
+			Block = AirIndex;
 		}
 	}
-	virtual ~FBasicBlockStorage()
+	virtual ~FBasicBlockStorage() override
 	{
 	};
 
 	virtual void SetBlock(int Index, UBlock* Block) override
 	{
 		check(Index >= 0 && Index < VOX_CHUNKSIZE_ARRAY);
-		InternalStorage[Index] = Block;
+		InternalStorage[Index] = Block->UniqueIndex;
 	}
 
 	virtual UBlock* GetBlock(int Index) override
 	{
-		return InternalStorage[Index];
-	}
-
-	virtual void Lock() override
-	{
-		CriticalSection.Lock();
-	}
-
-	virtual void UnLock() override
-	{
-		CriticalSection.Unlock();
+		return GETBLOCK_INDEX(InternalStorage[Index]);
 	}
 };
 

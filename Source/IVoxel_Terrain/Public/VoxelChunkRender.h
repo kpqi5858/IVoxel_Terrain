@@ -3,6 +3,7 @@
 #include "VoxelChunk.h"
 #include "VoxelPolygonizer.h"
 #include "ProceduralMeshComponent.h"
+#include "RuntimeMeshComponent.h"
 #include "VoxelChunkRender.generated.h"
 
 class UVoxelChunk;
@@ -18,13 +19,16 @@ private:
 
 	bool Initialized = false;
 
-	UProceduralMeshComponent* CustomMesh;
+	UPROPERTY()
+	URuntimeMeshComponent* CustomMesh;
 
 	TSharedPtr<FVoxelPolygonizer> Polygonizer;
 
-	FThreadSafeBool IsPolygonizing = false;
+	bool IsPolygonizing = false;
 
 	TSharedPtr<FVoxelPolygonizedData> PolygonizedData;
+
+	bool RePolygonize = false;
 
 public:
 	AVoxelChunkRender();
@@ -39,7 +43,7 @@ public:
 	void RenderTick();
 	void Polygonize();
 
-	void RenderRequest();
+	FORCENOINLINE void RenderRequest();
 
 	void ApplyPolygonizedData(FVoxelPolygonizedData* Data);
 

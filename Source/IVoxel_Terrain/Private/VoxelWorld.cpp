@@ -10,10 +10,6 @@ AVoxelWorld::AVoxelWorld()
 
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bHighPriority = true;
-	PolygonizerThreadPool = new FMyQueuedThreadPool;
-	WorldGeneratorThreadPool = new FMyQueuedThreadPool;
-
-	ChunkLoaderThread = new FVoxelChunkLoaderThread(this);
 }
 
 void AVoxelWorld::BeginPlay()
@@ -177,6 +173,7 @@ void AVoxelWorld::InitChunkAroundInvoker()
 AVoxelChunkRender* AVoxelWorld::CreateRenderActor()
 {
 	auto Render =  (AVoxelChunkRender*) GetWorld()->SpawnActor(AVoxelChunkRender::StaticClass());
+	Render->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 	AllRenders.Add(Render);
 	return Render;
 }
@@ -210,6 +207,11 @@ void AVoxelWorld::FreeRenderActor(AVoxelChunkRender* RenderActor)
 void AVoxelWorld::Initialize()
 {
 	check(!IsInitialized);
+	PolygonizerThreadPool = new FMyQueuedThreadPool;
+	WorldGeneratorThreadPool = new FMyQueuedThreadPool;
+
+	ChunkLoaderThread = new FVoxelChunkLoaderThread(this);
+
 	PolygonizerThreadPool->Create(PolygonizerThreads, 2048 * 2048);
 	WorldGeneratorThreadPool->Create(WorldGeneratorThreads, 2048 * 2048, EThreadPriority::TPri_SlightlyBelowNormal);
 	VoxelSizeInit = VoxelSize;

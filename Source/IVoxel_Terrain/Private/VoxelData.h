@@ -199,6 +199,14 @@ public:
 
 	UVoxelChunk* GetChunk() const;
 
+	bool IsInBoundary() const
+	{
+		FIntVector LocalPos = GetLocalPos();
+		return LocalPos.X == 0 || LocalPos.X == VOX_CHUNKSIZE - 1
+			|| LocalPos.Y == 0 || LocalPos.Y == VOX_CHUNKSIZE - 1
+			|| LocalPos.Z == 0 || LocalPos.Z == VOX_CHUNKSIZE - 1;
+	}
+
 public:
 	FORCEINLINE int ArrayIndex() const
 	{
@@ -206,6 +214,8 @@ public:
 		return VOX_CHUNK_AI(ChunkLocalPos.X, ChunkLocalPos.Y, ChunkLocalPos.Z);
 	}
 };
+
+constexpr int FaceCache_DirtyBit = 1 << 7;
 
 struct FFaceVisiblityCache
 {
@@ -233,5 +243,89 @@ struct FFaceVisiblityCache
 		}
 
 		return Data != Old;
+	}
+
+	FORCEINLINE bool IsDirty()
+	{
+		return Data & FaceCache_DirtyBit;
+	}
+
+	FORCEINLINE void SetDirty(bool Value)
+	{
+		if (Value)
+		{
+			Data |= FaceCache_DirtyBit;
+		}
+		else
+		{
+			Data &= ~FaceCache_DirtyBit;
+		}
+	}
+};
+
+struct FAdjacentChunkCache
+{
+	struct FCacheStruct
+	{
+		TWeakPtr<UVoxelChunk> WeakPtr;
+		UVoxelChunk* RealPtr;
+
+		void Set(UVoxelChunk* Chunk);
+
+		bool IsValid()
+		{
+			return WeakPtr.IsValid();
+		}
+
+		UVoxelChunk* operator*()
+		{
+			check(IsValid());
+			return RealPtr;
+		}
+	};
+
+	FCriticalSection CritSection;
+
+	AVoxelWorld* World;
+	FIntVector Location;
+
+	FCacheStruct Cache[27];
+
+	void Init(UVoxelChunk* Chunk);
+
+private:
+	FORCEINLINE FCacheStruct& GetCache(const int Index)
+	{
+		check(Index >= 0 && Index < 27);
+		return Cache[Index];
+	}
+
+public:
+	static FORCEINLINE int GetArrayIndex(FIntVector Offset)
+	{
+		check(Offset.GetMax() <= 1 && Offset.GetMin() >= -1);
+		Offset += FIntVector(1);
+		return (Offset.Z * 3 * 3) + (Offset.Y * 3) + Offset.X;
+	}
+
+	void GetAdjacentChunks(TArray<FIntVector>& Poses, TArray<UVoxelChunk*>& Ret);
+
+	UVoxelChunk* GetAdjacentChunkByFace(EBlockFace Face)
+	{
+		FIntVector Key = FVoxelUtilities::GetFaceOffset(Face);
+		{
+			//Fast pre checking
+			FScopeLock Lock(&CritSection);
+			auto& ChunkCache = GetCache(GetArrayIndex(Key));
+			if (ChunkCache.IsValid())
+			{
+				return *ChunkCache;
+			}
+		}
+		TArray<FIntVector> Pos;
+		Pos.Emplace(Key);
+		TArray<UVoxelChunk*> Ret;
+		GetAdjacentChunks(Pos, Ret);
+		return Ret[0];
 	}
 };

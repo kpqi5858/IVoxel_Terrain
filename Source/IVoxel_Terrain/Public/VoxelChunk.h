@@ -15,8 +15,6 @@ class FAbstractBlockStorage;
 struct FBlockPos;
 class FChunkUniversalThread;
 
-typedef TFunction<void(FBlockState*)> StateModifyFunction;
-
 UENUM(BlueprintType)
 enum class EChunkState : uint8
 {
@@ -37,8 +35,6 @@ enum class EWorldGenState : uint8
 	NOT_GENERATED,
 	GENERTING_PRIME,
 	GENERTED_PRIME,
-	VISIBLITY_UPDATING,
-	VISIBLITY_UPDATED,
 	GENERATING_POST,
 	GENERATED_POST
 };
@@ -46,11 +42,14 @@ enum class EWorldGenState : uint8
 class IVOXEL_TERRAIN_API UPrimeChunk
 {
 public:
-	UBlock* Blocks[VOX_CHUNKSIZE_ARRAY];
+	FAbstractBlockStorage* BlockStorage;
 
 	UPrimeChunk();
+	~UPrimeChunk();
 
 	void SetBlockDef(int X, int Y, int Z, UBlock* Block);
+
+	UBlock* GetBlockDef(int Index);
 };
 
 template<typename T>
@@ -66,7 +65,7 @@ protected:
     FIntVector ChunkPosition;
     AVoxelWorld* World;
 
-    bool RenderDirty = false;
+	FThreadSafeBool RenderDirty = false;
 
 	UVoxelWorldGenerator* WorldGenerator;
 
@@ -76,13 +75,12 @@ protected:
 	EChunkState ChunkState = EChunkState::CS_Invalid;
 
 	FCriticalSection ChunkStateLock;
-	FCriticalSection AdjacentCacheLock;
 
 	FChunkUniversalThread* UniversalThread = nullptr;
 
 	TSharedPtr<UVoxelChunk> ThisSharedPtr;
 	
-	TMap<FIntVector, TPair<TWeakPtr<UVoxelChunk>, UVoxelChunk*>> AdjacentCache;
+	FAdjacentChunkCache AdjacentCache;
 
 public:
 	//Can be null
@@ -108,13 +106,8 @@ public:
 
 	void GenerateWorld();
 	void PostGenerateWorld();
-	void UpdateFaceVisiblityAll();
 
 	void ProcessPrimeChunk();
-
-	//Only lock when your operation is not in game thread
-	void BlockStateStorageLock();
-	void BlockStateStorageUnlock();
 
 	bool IsValidChunk();
 
@@ -133,20 +126,18 @@ public:
 	void GetAdjacentChunks(TArray<UVoxelChunk*>& Ret);
 	void GetAdjacentChunks_Corner(TArray<UVoxelChunk*>& Ret);
 
-	void GetAdjacentChunksImpl(TArray<FIntVector>& Poses, TArray<UVoxelChunk*>& Ret);
-
 	UVoxelChunk* GetAdjacentChunkByFace(EBlockFace Face);
 
 	bool ShouldBeRendered();
 	bool ShouldBeTicked();
 	bool ShouldBeDeleted();
 	bool ShouldPostGenerate();
-	bool ShouldUpdateFaceVisiblity();
 
 	void QueuePreWorldGeneration();
 	void QueuePostWorldGeneration();
-	void QueueFaceVisiblityUpdate();
 	void QueuePolygonize();
+
+	bool IsDoingWorkNow();
 
 	TWeakPtr<UVoxelChunk> GetWeakPtr();
 
@@ -163,10 +154,7 @@ public:
 
     AVoxelChunkRender* GetRender();
 
-	inline void SetRenderDirty()
-	{
-		RenderDirty = true;
-	};
+	void SetRenderDirty();
 
 	inline FIntVector GetGlobalPosition_Min()
 	{

@@ -9,6 +9,8 @@
 #define GETBLOCK_T(x) FBlockRegistry::GetInstance_Ptr()->GetBlock_(x)
 //Parameter is const char*
 #define GETBLOCK_C(x) GETBLOCK_T(TEXT(x))
+//Parameter is unique index
+#define GETBLOCK_INDEX(x) FBlockRegistry::GetInstance_Ptr()->GetBlockByIndex(x)
 
 class UBlock;
 
@@ -16,6 +18,7 @@ class IVOXEL_TERRAIN_API FBlockRegistryInstance
 {
 private:
 	TMap<FName, UBlock*> BlockInstanceRegistry;
+	TArray<UBlock*> UniqueIndices;
 
 private:
 	FBlockRegistryInstance();
@@ -32,6 +35,8 @@ public:
 	{
 		return GetBlock(Name);
 	}
+
+	UBlock* GetBlockByIndex(uint16 Index);
 };
 
 class IVOXEL_TERRAIN_API FBlockRegistry

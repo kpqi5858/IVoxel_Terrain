@@ -55,3 +55,43 @@ UVoxelChunk* FBlockPos::GetChunk() const
 	return World->GetChunkFromBlockPos(*this);
 }
 
+void FAdjacentChunkCache::Init(UVoxelChunk* Chunk)
+{
+	World = Chunk->GetVoxelWorld();
+	Location = Chunk->GetChunkPosition();
+}
+
+void FAdjacentChunkCache::GetAdjacentChunks(TArray<FIntVector>& Poses, TArray<UVoxelChunk*>& Ret)
+{
+	FScopeLock Lock(&CritSection);
+
+	TArray<FIntVector> NotFound;
+	for (auto& Pos : Poses)
+	{
+		auto Chunk = GetCache(GetArrayIndex(Pos));
+		if (Chunk.IsValid())
+		{
+			Ret.Add(*Chunk);
+		}
+		else
+		{
+			NotFound.Add(Pos + Location);
+		}
+	}
+
+	TArray<UVoxelChunk*> NotFoundRet;
+	World->GetChunksFromIndices(NotFound, NotFoundRet);
+
+	for (auto& Chunk : NotFoundRet)
+	{
+		FIntVector Key = Chunk->GetChunkPosition() - Location;
+		auto& ChunkCache = GetCache(GetArrayIndex(Key));
+		ChunkCache.Set(Chunk);
+	}
+}
+
+void FAdjacentChunkCache::FCacheStruct::Set(UVoxelChunk * Chunk)
+{
+	WeakPtr = Chunk->GetWeakPtr();
+	RealPtr = Chunk;
+}

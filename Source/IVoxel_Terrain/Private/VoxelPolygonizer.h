@@ -22,6 +22,8 @@ public:
 	TSharedPtr<FVoxelPolygonizedData> PopPolygonizedData();
 
 private:
-	inline bool IsThisFaceVisible(FBlockPos Pos, EBlockFace Face);
 	inline void CreateFace(int X, int Y, int Z, int Section, EBlockFace Face);
+
+	//Updates cache if necessary
+	inline FFaceVisiblityCache GetFaceVisiblity(FBlockPos& Pos);
 };

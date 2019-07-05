@@ -47,6 +47,22 @@ enum class EThreadPoolToUse : uint8
 	INVALID, WORLDGEN, RENDER
 };
 
+struct FVoxelChunkToLoad
+{
+	const FIntVector IndexToLoad;
+	const int Priority;
+
+	FVoxelChunkToLoad(FIntVector Index, int Priority)
+		: IndexToLoad(Index), Priority(Priority)
+	{
+	}
+
+	bool operator<(const FVoxelChunkToLoad& Other)
+	{
+		return Priority < Other.Priority;
+	}
+};
+
 UCLASS()
 class IVOXEL_TERRAIN_API AVoxelWorld : public AActor
 {

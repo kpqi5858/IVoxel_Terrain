@@ -140,66 +140,6 @@ public:
 	virtual IMyQueuedWork* ReturnToPoolOrGetNextJob(FMyQueuedThread* InQueuedThread);
 };
 
-class FVoxelPolygonizerThread : public IMyQueuedWork
-{
-public:
-	FVoxelPolygonizerThread(AVoxelChunkRender* Render);
-
-	AVoxelChunkRender* Chunk;
-
-	void DoThreadedWork() override;
-	void Abandon() override;
-	int GetPriority() const override
-	{
-		return 1;
-	};
-};
-
-class FWorldGeneratorThread : public IMyQueuedWork
-{
-public:
-	FWorldGeneratorThread(UVoxelChunk* Chunk);
-
-	UVoxelChunk* Chunk;
-
-	void DoThreadedWork() override;
-	void Abandon() override;
-	int GetPriority() const override
-	{
-		return 1;
-	};
-};
-
-class FPostWorldGeneratorThread : public IMyQueuedWork
-{
-public:
-	FPostWorldGeneratorThread(UVoxelChunk* Chunk);
-
-	UVoxelChunk* Chunk;
-
-	void DoThreadedWork() override;
-	void Abandon() override;
-	int GetPriority() const override
-	{
-		return 0;
-	};
-};
-
-class FUpdateVisiblityThread : public IMyQueuedWork
-{
-public:
-	FUpdateVisiblityThread(UVoxelChunk* Chunk);
-
-	UVoxelChunk* Chunk;
-
-	void DoThreadedWork() override;
-	void Abandon() override;
-	int GetPriority() const override
-	{
-		return 0;
-	};
-};
-
 class FVoxelChunkLoaderThread : public IMyQueuedWork
 {
 public:
@@ -219,7 +159,7 @@ public:
 
 enum class EUniversalThreadType : uint8
 {
-	INVALID, WORLDGEN_PRE, VISIBLITY, WORLDGEN_POST, MESHER
+	INVALID, WORLDGEN_PRE, WORLDGEN_POST, MESHER
 };
 
 class FChunkUniversalThread : public IMyQueuedWork
@@ -231,6 +171,7 @@ public:
 	EUniversalThreadType ThreadType = EUniversalThreadType::INVALID;
 	int Priority = 0;
 
+	FThreadSafeBool IsDoingJobNow = false;
 	bool IsDone = true;
 
 	void InitThreadType(EUniversalThreadType Type);

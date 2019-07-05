@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	FName RegistryName;
 
+	//Do not save this
+	uint16 UniqueIndex = 0;
+
 	//If this is nullptr, the default engine material is used
 	virtual UMaterialInterface* GetMaterial()
 	{

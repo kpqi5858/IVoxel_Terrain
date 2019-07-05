@@ -16,8 +16,6 @@ void FVoxelPolygonizer::DoPolygonize()
 
 	TArray<UMaterialInterface*> Materials;
 
-	Chunk->BlockStateStorageLock();
-
 	const EBlockFace AllFaces[6] = { EBlockFace::FRONT, EBlockFace::BACK, EBlockFace::LEFT, EBlockFace::RIGHT, EBlockFace::TOP, EBlockFace::BOTTOM };
 
 	for (int X = 0; X < VOX_CHUNKSIZE; X++)
@@ -38,7 +36,7 @@ void FVoxelPolygonizer::DoPolygonize()
 		}
 		check(PolygonizedData->Sections.IsValidIndex(SectionNum));
 
-		auto& ThisVisiblity = Chunk->GetFaceVisiblityCache(BlockPos);
+		auto ThisVisiblity = GetFaceVisiblity(BlockPos);
 
 		for (EBlockFace Face : AllFaces)
 		{
@@ -49,7 +47,6 @@ void FVoxelPolygonizer::DoPolygonize()
 		}
 	}
 
-	Chunk->BlockStateStorageUnlock();
 	IsFinished = true;
 }
 
@@ -63,11 +60,6 @@ TSharedPtr<FVoxelPolygonizedData> FVoxelPolygonizer::PopPolygonizedData()
 	check(IsFinished);
 	IsFinished = false;
 	return PolygonizedData;
-}
-
-inline bool FVoxelPolygonizer::IsThisFaceVisible(FBlockPos Pos, EBlockFace Face)
-{
-	return Pos.GetChunk()->GetFaceVisiblityCache(Pos).IsThisFaceVisible(Face);
 }
 
 inline void FVoxelPolygonizer::CreateFace(int X, int Y, int Z, int Section, EBlockFace Face)
@@ -170,4 +162,14 @@ inline void FVoxelPolygonizer::CreateFace(int X, int Y, int Z, int Section, EBlo
 	ThisSection.Triangle.Add(TriIndex+1);
 	ThisSection.Triangle.Add(TriIndex+2);
 	ThisSection.Triangle.Add(TriIndex+3);
+}
+
+inline FFaceVisiblityCache FVoxelPolygonizer::GetFaceVisiblity(FBlockPos& Pos)
+{
+	auto& Cache = Chunk->GetFaceVisiblityCache(Pos);
+	if (Cache.IsDirty())
+	{
+		Chunk->UpdateFaceVisiblity(Pos);
+	}
+	return Cache;
 }

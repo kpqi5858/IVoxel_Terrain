@@ -278,71 +278,6 @@ IMyQueuedWork* FMyQueuedThreadPool::ReturnToPoolOrGetNextJob(FMyQueuedThread* In
 	return Work;
 }
 
-
-FVoxelPolygonizerThread::FVoxelPolygonizerThread(AVoxelChunkRender* Render)
-	: Chunk(Render)
-{
-}
-
-void FVoxelPolygonizerThread::DoThreadedWork()
-{
-	Chunk->Polygonize();
-	delete this;
-}
-
-void FVoxelPolygonizerThread::Abandon()
-{
-	delete this;
-}
-
-FWorldGeneratorThread::FWorldGeneratorThread(UVoxelChunk* Chunk)
-	: Chunk(Chunk)
-{
-}
-
-void FWorldGeneratorThread::DoThreadedWork()
-{
-	Chunk->GenerateWorld();
-	delete this;
-}
-
-void FWorldGeneratorThread::Abandon()
-{
-	delete this;
-}
-
-FPostWorldGeneratorThread::FPostWorldGeneratorThread(UVoxelChunk* Chunk)
-	: Chunk(Chunk)
-{
-}
-
-void FPostWorldGeneratorThread::DoThreadedWork()
-{
-	Chunk->PostGenerateWorld();
-	delete this;
-}
-
-void FPostWorldGeneratorThread::Abandon()
-{
-	delete this;
-}
-
-FUpdateVisiblityThread::FUpdateVisiblityThread(UVoxelChunk* Chunk)
-	: Chunk(Chunk)
-{
-}
-
-void FUpdateVisiblityThread::DoThreadedWork()
-{
-	Chunk->UpdateFaceVisiblityAll();
-	delete this;
-}
-
-void FUpdateVisiblityThread::Abandon()
-{
-	delete this;
-}
-
 FVoxelChunkLoaderThread::FVoxelChunkLoaderThread(AVoxelWorld* World)
 	: World(World)
 {
@@ -365,6 +300,7 @@ FChunkUniversalThread::FChunkUniversalThread(UVoxelChunk* Chunk)
 
 void FChunkUniversalThread::InitThreadType(EUniversalThreadType Type)
 {
+	//WHY??????????????????
 	check(IsDone);
 	IsDone = false;
 	ThreadType = Type;
@@ -372,6 +308,8 @@ void FChunkUniversalThread::InitThreadType(EUniversalThreadType Type)
 
 void FChunkUniversalThread::DoThreadedWork()
 {
+	check(!IsDoingJobNow);
+	IsDoingJobNow = true;
 	switch (ThreadType)
 	{
 	case EUniversalThreadType::WORLDGEN_PRE :
@@ -382,11 +320,6 @@ void FChunkUniversalThread::DoThreadedWork()
 	case EUniversalThreadType::WORLDGEN_POST :
 	{
 		Chunk->PostGenerateWorld();
-		break;
-	}
-	case EUniversalThreadType::VISIBLITY :
-	{
-		Chunk->UpdateFaceVisiblityAll();
 		break;
 	}
 	case EUniversalThreadType::MESHER :
@@ -402,6 +335,7 @@ void FChunkUniversalThread::DoThreadedWork()
 	}
 	}
 	IsDone = true;
+	IsDoingJobNow = false;
 }
 
 void FChunkUniversalThread::Abandon()

@@ -2,7 +2,7 @@
 
 #include "VoxelWorld.h"
 #include "VoxelData.h"
-#include "FastNoise.h"
+#include "FastNoise_IV/FastNoise.h"
 #include "UFNBlueprintFunctionLibrary.h"
 #include "WorldGenerator.generated.h"
 
@@ -286,6 +286,73 @@ public:
 					{
 						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
 					}
+				}
+			}
+		}
+	};
+};
+
+UCLASS(Blueprintable)
+class UCaveGenerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+
+public:
+	virtual ~UCaveGenerator()
+	{ }
+
+	UPROPERTY(EditDefaultsOnly)
+	float Freq = 0.1f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float Threshold = 0.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float Jitter = 0.4f;
+
+
+	FastNoise CaveGen1;
+	FastNoise CaveGen2;
+
+	virtual void Setup() override
+	{
+		CaveGen1.SetSeed(FMath::Rand());
+		CaveGen1.SetFrequency(Freq);
+		CaveGen1.SetCellularReturnType(FastNoise::CellularReturnType::Distance2Div);
+		CaveGen1.SetCellularJitter(Jitter);
+
+		CaveGen2 = CaveGen1;
+		CaveGen2.SetSeed(FMath::Rand());
+	}
+
+	virtual void GeneratePrimeInternal(UVoxelChunk* Chunk) override
+	{
+		UPrimeChunk& PC = Chunk->PrimeChunk;
+
+		for (int X = 0; X < VOX_CHUNKSIZE; X++)
+		{
+			for (int Y = 0; Y < VOX_CHUNKSIZE; Y++)
+			{
+				for (int Z = 0; Z < VOX_CHUNKSIZE; Z++)
+				{
+					FIntVector GlobalPos = Chunk->GetGlobalPosition_Min() + FIntVector(X, Y, Z);
+					FVector FloatPos = FVector(GlobalPos);
+
+					float N0 = CaveGen1.GetCellular(FloatPos.X, FloatPos.Y, FloatPos.Z);
+					FloatPos += FVector(Freq * 0.5f);
+
+					float N1 = CaveGen2.GetCellular(FloatPos.X, FloatPos.Y, FloatPos.Z);
+					float CaveNoise = FMath::Min(N0, N1);
+
+					if (CaveNoise < Threshold)
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("SolidDefault"));
+					}
+					else
+					{
+						PC.SetBlockDef(X, Y, Z, GETBLOCK_C("Air"));
+					}
+
 				}
 			}
 		}
